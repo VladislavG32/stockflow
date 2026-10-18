@@ -15,7 +15,9 @@ VM пока не создана. На Windows — только VirtualBox, Power
 Get-CimInstance Win32_OperatingSystem | Select-Object FreePhysicalMemory,TotalVisibleMemorySize
 ```
 
-Нужны свободные8ГБ плюс запас Windows. Не включать все VM сразу при нехватке RAM:
+Нужны свободные8ГБ плюс запас Windows. Для ЛР5–8 одновременно CI8+TEST4+STAGE4
+требуют16ГБ гостевой RAM плюс RAM Windows; с PROD ещё4ГБ. Учесть это в бюджете
+ноутбука, а не только размер одной VM. Не включать все VM сразу при нехватке RAM:
 PROD до ЛР8 можно штатно завершить из Ubuntu, сохранив диск. Если8ГБ выделить нельзя,
 не запускать CI рядом с рабочей PostgreSQL4ГБ; сначала выбрать домашний Linux-сервер
 и подтвердить связь по разделу ниже. Дополнительное оборудование покупать не нужно.
@@ -124,6 +126,8 @@ docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compo
 sudo mkdir -p /opt/buildagent/{work,temp,system,tools,plugins} /opt/stockflow-ci/buildx
 sudo bash scripts/ci/create-builder.sh
 docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.build-agent.yaml up -d
+docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.build-agent.yaml exec -T agent docker buildx version
+docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.build-agent.yaml exec -T agent docker compose version
 ```
 
 В private env для выбранного адреса:

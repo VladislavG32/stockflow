@@ -129,3 +129,15 @@ SSH22 связывает TEST с целевыми стендами. Нет за�
 preflight.sh запрещает запуск при недостатке RAM/диска. bundle/load-bundle переносят
 образ по checksum и полному SHA; Acceptance получает настоящий PostgreSQL на TEST.
 Процесс создания CI описан в LINUX_CI_SETUP_RU; VM/домашняя сеть ещё требуют настройки.
+
+Новые ключевые файлы инфраструктуры:
+
+| Файл | Что объяснить преподавателю |
+|---|---|
+| scripts/ci/preflight.sh | Проверяет Linux, MemAvailable, диск и CLI до нагрузки |
+| scripts/ci/create-builder.sh | Именованный BuildKit с лимитом3ГБ; общая metadata root/agent |
+| scripts/ci/bundle.sh | Build на CI, docker save и sha256; никаких feature push |
+| scripts/ci/load-bundle.sh | Checksum/labels до использования образов; не source manifest |
+| scripts/ci/acceptance.sh | TEST запускает готовые images и изолированную PostgreSQL |
+| infra/teamcity/compose.build-agent.yaml | Отдельный build-agent CI и bind Buildx metadata |
+| tests/ci-infra.test.mjs | Запрет тяжёлой сборки TEST, corrupt bundle, feature publish gate |
