@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { matchesStockFilter } from "@/lib/inventory";
 import type { DashboardData } from "@/lib/types";
 import { AppShell, BoxIcon, sections } from "./ui";
 import { InventoryForms } from "./inventory-forms";
@@ -57,8 +58,7 @@ export function Dashboard({
       (item) =>
         matches(item.name, item.code, item.category) &&
         (!category || item.category === category) &&
-        (!stockFilter ||
-          (stockFilter === "low" ? item.shortage : !item.shortage)),
+        matchesStockFilter(item.balance, item.shortage, stockFilter),
     ) ?? [];
   const visibleSuppliers =
     data?.suppliers.filter((item) => matches(item.name, item.contact)) ?? [];

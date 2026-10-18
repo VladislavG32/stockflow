@@ -1,0 +1,13 @@
+# На TEST: /opt/stockflow-ci/ssh/config. Замените ubuntu своим SSH-пользователем.
+Host stockflow-stage
+  HostName 192.168.56.12
+  User ubuntu
+  IdentityFile /root/.ssh/id_ed25519
+  StrictHostKeyChecking yes
+  UserKnownHostsFile /root/.ssh/known_hosts
+Host stockflow-prod
+  HostName 192.168.56.13
+  User ubuntu
+  IdentityFile /root/.ssh/id_ed25519
+  StrictHostKeyChecking yes
+  UserKnownHostsFile /root/.ssh/known_hosts

@@ -11,6 +11,7 @@ project {
     vcsRoot(Source)
     buildType(Verify)
     buildType(Publish)
+    buildType(Stage)
 }
 object Source : GitVcsRoot({
     name = "StockFlow GitHub"
@@ -44,5 +45,19 @@ object Publish : BuildType({
     steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
     triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
     artifactRules = "artifacts/release.env"
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+})
+
+object Stage : BuildType({
+    id("StockFlow_Stage")
+    name = "03 Deploy STAGE from DEV"
+    maxRunningBuilds = 1
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev" }
+    dependencies {
+        snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming" }
+    }
+    steps { script { name = "Обновление STAGE с сохранением БД"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev" } }
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
