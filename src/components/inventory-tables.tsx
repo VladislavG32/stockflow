@@ -119,6 +119,9 @@ export function SupplierList({ rows }: { rows: Supplier[] }) {
 }
 
 export function ReceiptTable({ rows }: { rows: Receipt[] }) {
+  // Форматируем только для показа; в БД и расчётах остаются целые копейки.
+  const money = (value: number | null) => value === null ? "Не указана" :
+    new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" }).format(value / 100);
   return (
     <Panel
       id="receipts"
@@ -134,6 +137,7 @@ export function ReceiptTable({ rows }: { rows: Receipt[] }) {
                 <th scope="col">Операция / дата</th>
                 <th scope="col">Материал / поставщик</th>
                 <th scope="col">Количество</th>
+                <th scope="col">Цена / стоимость</th>
                 <th scope="col">Примечание</th>
               </tr>
             </thead>
@@ -153,6 +157,7 @@ export function ReceiptTable({ rows }: { rows: Receipt[] }) {
                   <td className="positive-quantity">
                     +{item.quantity} {item.unit}
                   </td>
+                  <td>{money(item.unitPriceKopecks)} / {money(item.totalKopecks)}</td>
                   <td>{item.note || "—"}</td>
                 </tr>
               ))}

@@ -21,6 +21,8 @@ export type Receipt = {
   supplierName: string;
   unit: string;
   quantity: number;
+  unitPriceKopecks: number | null;
+  totalKopecks: number | null;
   receivedOn: string;
   note: string;
 };

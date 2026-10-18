@@ -1,0 +1,2 @@
+ALTER TABLE "receipts" ADD COLUMN "unit_price_kopecks" integer;--> statement-breakpoint
+ALTER TABLE "receipts" ADD CONSTRAINT "receipts_price_range" CHECK ("receipts"."unit_price_kopecks" IS NULL OR ("receipts"."unit_price_kopecks" >= 0 AND "receipts"."unit_price_kopecks" <= 1000000000));

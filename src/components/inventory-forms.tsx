@@ -109,6 +109,14 @@ export function InventoryForms({
                     type: "date",
                   },
                   {
+                    name: "unitPriceKopecks",
+                    label: "Цена за единицу, коп. (необязательно)",
+                    type: "number",
+                    min: 0,
+                    max: 1000000000,
+                    optional: true,
+                  },
+                  {
                     name: "note",
                     label: "Примечание",
                     maxLength: 500,
