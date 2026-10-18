@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SSH сверяет известный ключ сервера. Артефакт читается как данные, не как shell-код.
 set -Eeuo pipefail
+bash scripts/ci/preflight.sh deploy
 target=${1:?stage or prod}
 [[ "$target" == stage || "$target" == prod ]] || exit 1
 file=incoming/release.env

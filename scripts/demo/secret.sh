@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Демонстрация без настоящего секрета, вне Git и рабочих веток.
 set -Eeuo pipefail
-temp=$(mktemp -d)
+mkdir -p artifacts
+# Docker daemon живёт на Linux-хосте агента: /tmp контейнера ему не виден.
+# Рабочий каталог смонтирован по одинаковому абсолютному пути на обеих сторонах.
+temp=$(mktemp -d "$PWD/artifacts/secret-demo.XXXXXX")
 trap 'rm -rf -- "$temp"' EXIT
 printf 'STOCKFLOW_DEMO_%s\n' 'ABCDEFGHIJKLMNOPQRST' > "$temp/demo.txt"
 set +e

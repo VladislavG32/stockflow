@@ -16,40 +16,39 @@ Drizzle и настоящий PostgreSQL17; compose.ci.yaml создаёт от�
 
 ## Запуск
 
-Windows PowerShell:
-
-```powershell
-Set-Location D:\StockFlow
-npm ci
-npm run lint
-npm run typecheck
-npm test
-npm run test:coverage
-npm run demo:test-failure
-```
-
-В ранней контрольной ветке, если npm alias отсутствует: `node scripts/demo/failing-code.mjs`.
-В окончательной версии все alias добавлены. Unit не требует DATABASE_URL.
-Ожидается PASS; demo сначала показывает реальный assertion failure, затем PASS
-того же файла теста. Сценарий меняет `<` на `<=` в КОПИИ функции, основной код не
-трогает. Это локальная демонстрация; TeamCity её запуск не выдумывается.
-
-На TEST в отдельном checkout проверяемой ветки:
+На CI Linux по SSH, отдельный checkout codex/lab7-ready:
 
 ```bash
 cd ~/stockflow-ci-config
-mkdir -p artifacts
-docker build --target runner -t "stockflow-check:$(git rev-parse HEAD)" .
-bash scripts/ci/integration.sh
+bash scripts/ci/preflight.sh build
+docker run --rm --memory=2300m -v "$PWD:$PWD" -w "$PWD" node:24-bookworm-slim bash -ec 'npm ci; npm run lint; npm run typecheck; npm test; npm run test:coverage; npm run demo:test-failure'
 ```
 
-Финальный integration.sh запускает HTTP-тесты, тест миграций, экспорт TEST-эталона,
-пересоздание app с сохранением записи, затем недоступность БД. Объекты одноразового
-проекта автоматически удаляются командой down БЕЗ -v; рабочий проект stockflow
-не используется. Ожидается итоговый exit 0; лог в artifacts/integration-compose.log.
-Запуск `npm run test:integration` вручную требует одновременно BASE_URL правильного
-app и DATABASE_URL отдельной stockflow_ci, плюс STOCKFLOW_TEST_DATABASE=stockflow_ci.
-Защита сценария откажет для stockflow и не начнёт записи/очистку.
+В TeamCity переключить Settings root на codex/lab7-ready. Verify выполняется на
+stockflow-build-agent CI: unit/build и artifacts checks/ci-images.tar.gz, ci-images.sha256.
+Новая `01b Acceptance PostgreSQL on TEST` получает их через sameChain на TEST-agent.
+Скриншот: две конфигурации, два разных агента, зелёный Acceptance и его checks/лог.
+На защите: «Unit и сборка на CI, интеграция готового образа с реальной PostgreSQL на TEST».
+
+Ручной повтор Acceptance на TEST (только после скачивания tar+sha256 из одной успешной
+Verify-сборки в incoming/ checkout ТОГО ЖЕ SHA):
+
+```bash
+cd ~/stockflow-ci-config
+mkdir -p incoming artifacts
+# Через TeamCity Download artifacts сохранить ci-images.tar.gz и ci-images.sha256 в incoming.
+# Проверить: git rev-parse HEAD должен равняться SHA выбранной Verify.
+bash scripts/ci/acceptance.sh
+```
+
+Никаких docker build/npm ci на TEST. Скрипт проверяет свободную RAM>=1600MiB и
+диск>=6000MiB, checksum/labels, затем загружает образы и запускает изолированную
+stockflow_ci. Данные рабочей stockflow и тома не удаляются. Отдельный tmpfs/network,
+нет опубликованного5432. Ожидается exit0; artifacts/integration-compose.log и schema
+экспорт публикуются Acceptance. После проверки одноразовый Compose удаляется без-v.
+
+Demo меняет `<` на `<=` в КОПИИ кода, показывает падение и успех того же теста.
+Для реального красного TeamCity build ниже остаётся сценарий временной feature-ветки.
 
 ## Что проверяет каждый тест
 
@@ -104,13 +103,13 @@ app и DATABASE_URL отдельной stockflow_ci, плюс STOCKFLOW_TEST_DAT
 | Авторизация/списания/удаление, если есть в ТЗ | ещё не реализованы | не покрыты |
 
 Нельзя утверждать «40% ТЗ достигнуто» до сверки полного сданного документа.
-Code coverage дополнительно: локально измерено 96,79% строк ТОЛЬКО трёх импортированных
+Code coverage дополнительно: локально измерено 98,17% строк ТОЛЬКО трёх импортированных
 unit-модулей api/inventory/validation. Это не процент всего проекта и не процент ТЗ.
 
 ## TeamCity и демонстрация ошибки
 
 Настройки codex/lab7-ready. Проверить feature/fix, затем dev, затем prod; сохранить
-номер build, SHA, exit code. Все ветки проходят Verify до Publish/Stage.
+номер build, SHA, exit code. Все актуальные ветки проходят Verify → Acceptance на TEST до Publish/Stage.
 Для реального красного TeamCity build создайте отдельную feature/lab7-broken от dev,
 замените `balance < minimumStock` на `balance <= minimumStock` в inventory.ts,
 commit/push. Тест на точной границе должен упасть; зафиксируйте скриншот. Следующим
@@ -130,3 +129,31 @@ commit/push. Тест на точной границе должен упасть
 включая дубликат. 1 — красный/зелёный код. 1–2 — ветки и матрица ТЗ.
 Вопросы: почему coverage строк не 40% функций; почему настоящая PostgreSQL;
 как исключена потеря данных; почему нет теста DELETE; как проверяется atomicity.
+
+## Перенести подготовку через отдельный PR
+
+Windows PowerShell, после завершения предыдущей ЛР:
+
+```powershell
+Set-Location D:\StockFlow
+git fetch origin
+git switch -c feature/lab7-tests origin/dev
+git merge codex/lab7-ready
+git push -u origin feature/lab7-tests
+```
+
+В GitHub открыть PR в dev, получить реальное review, merge. Повторить fetch.
+Для демонстрации PROD-ветки (без развёртывания реальной PROD VM):
+
+```powershell
+git fetch origin
+git switch prod
+git merge --ff-only origin/dev
+git push origin prod
+```
+
+Доставка на PROD от этого не запускается. Все новые feature/fix создавайте от
+обновлённого dev, чтобы они наследовали CI-файлы и тесты. Исторические main/ветка
+ЛР3 не содержат новой инфраструктуры; их старый код не переписываем и не выдаём
+неподдерживаемую сборку за успешную. При расхождении истории ff-only остановится:
+разрешите историю обычным PR/merge, не force/reset.

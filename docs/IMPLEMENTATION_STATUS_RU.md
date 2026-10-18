@@ -1,4 +1,15 @@
-# Статус подготовки StockFlow к лабораторным 4–8
+# Статус после исправления Linux инфраструктуры
+
+Архитектура прежней подготовки пересмотрена: Windows не запускает Docker/TeamCity.
+Server/build-agent — отдельный Linux CI, Acceptance/доставка — TEST-agent.
+CI VM ещё не создана, домашняя сеть не проверена, стенды не подключались.
+См. INFRA_AUDIT_RU, LINUX_CI_SETUP_RU и NEXT_STEPS_RU.
+
+Ниже сохранены результаты предыдущих локальных проверок приложения; они не являются
+результатами нового Linux pipeline. Новый аудит конфигураций фиксируется отдельной
+таблицей после выполнения проверок.
+
+## Предыдущая локальная проверка приложения
 
 Дата проверки: 18 октября 2026, локальный Windows-хост. Это статус подготовки,
 не отчёт о сдаче ЛР и не журнал запусков TeamCity/VM.
@@ -31,15 +42,16 @@
 
 | Проверка | Результат |
 |---|---|
-| npm ci | Успех, lockfile сохранён; npm audit отдельно сообщает9 dev-проблем |
+| npm ci | Успех, lockfile сохранён; audit сообщает9 dev-проблем; production audit:0 |
 | ESLint | Успех, без выключения правил |
 | next typegen + TypeScript | Успех |
 | node:test | 10 групп в итоговой версии, все прошли |
-| Code coverage | 96,79% строк только api/inventory/validation, не всего проекта |
+| Code coverage | 98,17% строк только api/inventory/validation, не всего проекта |
 | Demo ошибка кода | Один и тот же тест упал на <= и прошёл после возврата < во временной копии |
 | HTTP + реальная PostgreSQL17.10 | integration.ts прошёл, включая дубликаты/параллельность/цены |
 | Недоступная БД | Отдельный app с недоступным адресом: health200, ready503, dashboard503 |
-| Миграции |0000→0001→0002; исторические строки; CHECK; повтор; atomic rollback проверены |
+| Миграции |0000→0001→0002; исторические строки; CHECK; повтор; atomic rollback и отказ при изменении hash проверены |
+| Сохранность при restart app | Маркер PERSIST-LOCAL сохранился после остановки и нового запуска standalone |
 | Production Next build | Успех, standalone |
 | Штатный schema export | pg_dump17.6 против PostgreSQL17.10, schema.raw.sql/schema.sql, hash history |
 | Backup непустой БД | pg_dump custom → новая БД pg_restore; все строки трёх таблиц равны |
@@ -47,8 +59,9 @@
 | Squawk2.70.0 |0 замечаний в6 SQL-файлах с документированным контекстом мигратора |
 | Bash syntax | Все .sh проходят bash -n |
 | Compose config | ci, release+base, server, agent, recovery проходят parse/config |
-| TeamCity Kotlin DSL | Maven generate с JDK21 и официальным plugin repo успешно создал XML |
-| Docker build/run | НЕ выполнены: Linux Engine Docker Desktop недоступен |
+| Registry manifests | Теги TeamCity server/agent2026.2 и Squawk2.70.0 существуют, metadata проверены |
+| TeamCity Kotlin DSL | Maven generate с JDK21 и официальным plugin repo успешно создал XML для итоговой и всех5 контрольных конфигураций |
+| Docker build/run | НЕ выполнены: Linux Engine локально не используется; Docker build/run на VM ещё не выполнены |
 | TeamCity build/server/agent | НЕ выполнялись; XML generation не равна реальной сборке |
 | Docker Hub push | НЕ выполнялся, нужен пользовательский аккаунт/token |
 | STAGE/PROD delivery | НЕ запускалась; SSH/rollback/rehearsal на VM предстоит проверить |
@@ -61,8 +74,8 @@
 
 - Docker pipeline и VM-скрипты написаны и прошли синтаксическую проверку, но требуют
   end-to-end прогона после запуска Engine/TeamCity. Не считать их проверенной эксплуатацией.
-- Память TEST4ГБ ограничена. Один агент, последовательные контейнеры; при OOM сборки
-  перенести на имеющийся Windows-хост. Дополнительное оборудование не требуется.
+- Память TEST4ГБ ограничена. Только готовые контейнеры на TEST, тяжёлые сборки на CI; при OOM сборки
+  перенести на выделенный Linux CI8ГБ/60ГБ. Домашний сервер допустим после проверки сети.
 - npm audit нашёл4 moderate и5 high в dev-tool цепочках drizzle-kit и eslint-config-next.
   Предлагались несовместимые downgrade через --force, они не применялись. Обновление
   инструментов в отдельной fix-ветке и повторный audit остаются отдельной проверкой.
@@ -74,7 +87,7 @@
 
 ## Какие доступы нужны и что делать дальше
 
-1. Доступ к Docker Desktop на Windows и SSH к TEST/STAGE/PROD, реальные имена SSH-пользователей.
+1. Доступ к выбранному Linux CI и SSH к TEST/STAGE/PROD, реальные имена SSH-пользователей.
 2. Docker Hub username + write Access Token для Publish, публичный stockflow repository.
 3. GitHub push/PR/rulesets, реальный reviewer для DEV; read-only clone публичный без PAT.
 4. Администратор локального TeamCity, авторизация агента, защищённые параметры Publish.

@@ -1,0 +1,26 @@
+name: stockflow-build-agent
+services:
+  agent:
+    image: jetbrains/teamcity-agent:2026.2-linux-sudo
+    restart: unless-stopped
+    # Docker socket даёт права root на CI. Только доверенный личный репозиторий,
+    # без запуска fork PR. На STAGE/PROD сокет не передаётся.
+    user: "0"
+    environment:
+      BUILDX_CONFIG: /opt/stockflow-ci/buildx
+      # CI-VM: адрес относится к Host-Only, не к localhost контейнера.
+      SERVER_URL: ${TEAMCITY_SERVER_URL:?Set TEAMCITY_SERVER_URL in private env file}
+      AGENT_NAME: stockflow-build-agent
+    mem_limit: 768m
+    volumes:
+      - /opt/stockflow-ci/buildx:/opt/stockflow-ci/buildx
+      - agent_conf:/data/teamcity_agent/conf
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Одинаковые пути нужны вложенным docker run: mount выполняет Docker хоста.
+      - /opt/buildagent/work:/opt/buildagent/work
+      - /opt/buildagent/temp:/opt/buildagent/temp
+      - /opt/buildagent/system:/opt/buildagent/system
+      - /opt/buildagent/tools:/opt/buildagent/tools
+      - /opt/buildagent/plugins:/opt/buildagent/plugins
+volumes:
+  agent_conf:
