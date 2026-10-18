@@ -1,0 +1,48 @@
+name: stockflow
+
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: stockflow
+      POSTGRES_USER: stockflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockflow -d stockflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    # Порт БД не публикуется: приложение обращается к db через внутреннюю сеть Compose.
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://stockflow:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/stockflow
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://stockflow:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/stockflow
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  # down без -v не удаляет этот том. База переживает пересоздание контейнеров.
+  postgres_data:
