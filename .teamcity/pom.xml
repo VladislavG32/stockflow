@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Проверка Kotlin DSL отдельно от приложения. Версия API совпадает с сервером. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>stockflow</groupId><artifactId>teamcity-settings</artifactId><version>1.0</version>
+  <properties><teamcity.dsl.version>2026.2</teamcity.dsl.version><kotlin.version>2.0.21</kotlin.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><teamcity.server.url>http://127.0.0.1:8111</teamcity.server.url></properties>
+  <repositories>
+    <!-- GitVcsRoot, script и triggers поставляются установленными плагинами сервера. -->
+    <repository><id>teamcity-server</id><url>${teamcity.server.url}/app/dsl-plugins-repository</url><snapshots><enabled>true</enabled></snapshots></repository>
+    <repository><id>jetbrains-teamcity</id><url>https://download.jetbrains.com/teamcity-repository</url></repository>
+  </repositories>
+  <pluginRepositories><pluginRepository><id>jetbrains-teamcity</id><url>https://download.jetbrains.com/teamcity-repository</url></pluginRepository></pluginRepositories>
+  <dependencies>
+    <dependency><groupId>org.jetbrains.teamcity</groupId><artifactId>configs-dsl-kotlin-latest</artifactId><version>${teamcity.dsl.version}</version></dependency>
+    <dependency><groupId>org.jetbrains.teamcity</groupId><artifactId>configs-dsl-kotlin-plugins-latest</artifactId><version>1.0-SNAPSHOT</version><type>pom</type></dependency>
+    <dependency><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-stdlib-jdk8</artifactId><version>${kotlin.version}</version></dependency>
+    <dependency><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-script-runtime</artifactId><version>${kotlin.version}</version></dependency>
+  </dependencies>
+  <build>
+    <sourceDirectory>${project.basedir}</sourceDirectory>
+    <plugins>
+      <plugin><groupId>org.jetbrains.teamcity</groupId><artifactId>teamcity-configs-maven-plugin</artifactId><version>${teamcity.dsl.version}</version><configuration><format>kotlin</format><dstDir>target/generated-configs</dstDir></configuration></plugin>
+    </plugins>
+  </build>
+</project>

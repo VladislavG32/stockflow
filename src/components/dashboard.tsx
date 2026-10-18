@@ -13,7 +13,7 @@ import {
   SupplierList,
 } from "./inventory-tables";
 
-// РџРѕСЃР»Рµ Р·Р°РїРёСЃРё РЅРѕРІС‹Р№ СЃРЅРёРјРѕРє РѕР±РЅРѕРІР»СЏРµС‚ РєР°С‚Р°Р»РѕРі, РѕСЃС‚Р°С‚РєРё Рё СЂРµРєРѕРјРµРЅРґР°С†РёРё РІРјРµСЃС‚Рµ.
+// После записи новый снимок обновляет каталог, остатки и рекомендации вместе.
 export function Dashboard({
   initialData,
 }: {
@@ -23,7 +23,7 @@ export function Dashboard({
   const [error, setError] = useState(
     initialData
       ? ""
-      : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРєР»Р°Рґ. РџСЂРѕРІРµСЂСЊС‚Рµ PostgreSQL Рё РїСЂРёРјРµРЅРµРЅРёРµ РјРёРіСЂР°С†РёР№.",
+      : "Не удалось загрузить склад. Проверьте PostgreSQL и применение миграций.",
   );
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
@@ -42,7 +42,7 @@ export function Dashboard({
       setUpdated(new Date().toLocaleTimeString("ru-RU"));
     } catch {
       setError(
-        "РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ. РџСЂРµРґС‹РґСѓС‰РёР№ СЃРЅРёРјРѕРє РјРѕР¶РµС‚ Р±С‹С‚СЊ СѓСЃС‚Р°СЂРµРІС€РёРј. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРѕРµРґРёРЅРµРЅРёРµ Рё РЅР°Р¶РјРёС‚Рµ В«РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹РµВ».",
+        "Не удалось обновить данные. Предыдущий снимок может быть устаревшим. Проверьте соединение и нажмите «Обновить данные».",
       );
       throw new Error("Refresh failed");
     } finally {
@@ -81,39 +81,39 @@ export function Dashboard({
     <AppShell>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">РџР РћРЎРўРћР™ РЈР§РЃРў. РџРћР›РќР«Р™ РћР‘Р—РћР .</p>
+          <p className="eyebrow">ПРОСТОЙ УЧЁТ. ПОЛНЫЙ ОБЗОР.</p>
           <h1>StockFlow</h1>
-          <p className="subtitle">РЎРёСЃС‚РµРјР° Р°РІС‚РѕРјР°С‚РёР·Р°С†РёРё СЃРєР»Р°РґСЃРєРѕРіРѕ СѓС‡С‘С‚Р°</p>
+          <p className="subtitle">Система автоматизации складского учёта</p>
         </div>
-        <span className="version-tag">Р›Р  в„–3 / 0.2</span>
+        <span className="version-tag">ЛР №3 / 0.2</span>
       </div>
       <div className="intro-banner">
         <div className="intro-icon">
           <BoxIcon />
         </div>
         <div>
-          <strong>Р’СЃС‘ Рѕ СЃРєР»Р°РґРµ вЂ” РІ РѕРґРЅРѕРј РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРµ</strong>
+          <strong>Всё о складе — в одном пространстве</strong>
           <p>
-            Р–РёРІС‹Рµ РґР°РЅРЅС‹Рµ, РїРѕРЅСЏС‚РЅС‹Рµ РѕРїРµСЂР°С†РёРё Рё РїР»Р°РЅ РїРѕРїРѕР»РЅРµРЅРёСЏ РґРѕ С†РµР»РµРІРѕРіРѕ
-            Р·Р°РїР°СЃР°.
+            Живые данные, понятные операции и план пополнения до целевого
+            запаса.
           </p>
         </div>
         <a href="#replenishment" className="banner-link">
-          РџР»Р°РЅ РїРѕРїРѕР»РЅРµРЅРёСЏ в†—
+          План пополнения ↗
         </a>
       </div>
       <div className="refresh-row">
         <span aria-live="polite">
           {updated
-            ? `Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІР»РµРЅС‹ РІ ${updated}`
-            : "Р”Р°РЅРЅС‹Рµ РёР· PostgreSQL В· РѕР±РЅРѕРІР»СЏР№С‚Рµ РїСЂРё СЂР°Р±РѕС‚Рµ РІ РЅРµСЃРєРѕР»СЊРєРёС… РІРєР»Р°РґРєР°С…"}
+            ? `Данные обновлены в ${updated}`
+            : "Данные из PostgreSQL · обновляйте при работе в нескольких вкладках"}
         </span>
         <button
           className="button secondary"
           disabled={refreshing}
           onClick={() => void refresh().catch(() => {})}
         >
-          {refreshing ? "РћР±РЅРѕРІР»РµРЅРёРµвЂ¦" : "РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ"}
+          {refreshing ? "Обновление…" : "Обновить данные"}
         </button>
       </div>
       {error && (
@@ -123,7 +123,7 @@ export function Dashboard({
       )}
       {data && (
         <>
-          <div className="summary-grid" aria-label="РџРѕРєР°Р·Р°С‚РµР»Рё РІСЃРµРіРѕ СЃРєР»Р°РґР°">
+          <div className="summary-grid" aria-label="Показатели всего склада">
             {sections.map((section, index) => (
               <a
                 className="summary-card"
@@ -133,7 +133,7 @@ export function Dashboard({
                 <div className="summary-top">
                   <span>{section.label}</span>
                   <span className="summary-arrow" aria-hidden="true">
-                    в†—
+                    ↗
                   </span>
                 </div>
                 <div className="summary-value">
@@ -141,10 +141,10 @@ export function Dashboard({
                   <span>
                     {
                       [
-                        "РІ РєР°С‚Р°Р»РѕРіРµ",
-                        "РїР°СЂС‚РЅС‘СЂРѕРІ",
-                        "РѕРїРµСЂР°С†РёР№",
-                        "РїРѕР·РёС†РёР№ РІ РЅР°Р»РёС‡РёРё",
+                        "в каталоге",
+                        "партнёров",
+                        "операций",
+                        "позиций в наличии",
                       ][index]
                     }
                   </span>
@@ -152,10 +152,10 @@ export function Dashboard({
                 <span className="summary-caption">
                   {
                     [
-                      "РљР°С‚Р°Р»РѕРі РјР°С‚РµСЂРёР°Р»РѕРІ",
-                      "РџР°СЂС‚РЅС‘СЂС‹ СЃРєР»Р°РґР°",
-                      "Р–СѓСЂРЅР°Р» РїРѕСЃС‚СѓРїР»РµРЅРёР№",
-                      "РџРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рµ РѕСЃС‚Р°С‚РєРё",
+                      "Каталог материалов",
+                      "Партнёры склада",
+                      "Журнал поступлений",
+                      "Положительные остатки",
                     ][index]
                   }
                 </span>
@@ -165,33 +165,33 @@ export function Dashboard({
           {shortageCount > 0 && (
             <a href="#replenishment" className="shortage-banner">
               <span>
-                в†— РўСЂРµР±СѓСЋС‚ РїРѕРїРѕР»РЅРµРЅРёСЏ: <strong>{shortageCount}</strong>
+                ↗ Требуют пополнения: <strong>{shortageCount}</strong>
               </span>
-              <span>РћС‚РєСЂС‹С‚СЊ СЂРµРєРѕРјРµРЅРґР°С†РёРё в†’</span>
+              <span>Открыть рекомендации →</span>
             </a>
           )}
           <InventoryForms data={data} onSaved={refresh} />
           <div className="data-label">
-            <h2>РћР±Р·РѕСЂ СЃРєР»Р°РґР°</h2>
-            <span>РџРѕРєР°Р·Р°С‚РµР»Рё РІС‹С€Рµ РѕС‚РЅРѕСЃСЏС‚СЃСЏ РєРѕ РІСЃРµРјСѓ СЃРєР»Р°РґСѓ</span>
+            <h2>Обзор склада</h2>
+            <span>Показатели выше относятся ко всему складу</span>
           </div>
           <div className="filter-bar">
             <label className="search-field">
-              <span>РџРѕРёСЃРє РїРѕ РІСЃРµРј СЂР°Р·РґРµР»Р°Рј</span>
+              <span>Поиск по всем разделам</span>
               <input
                 type="search"
-                placeholder="РќР°Р·РІР°РЅРёРµ, РєРѕРґ, РїРѕСЃС‚Р°РІС‰РёРє, РЅРѕРјРµСЂ РѕРїРµСЂР°С†РёРёвЂ¦"
+                placeholder="Название, код, поставщик, номер операции…"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
             <label>
-              <span>РљР°С‚РµРіРѕСЂРёСЏ РјР°С‚РµСЂРёР°Р»РѕРІ</span>
+              <span>Категория материалов</span>
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
               >
-                <option value="">Р’СЃРµ РєР°С‚РµРіРѕСЂРёРё</option>
+                <option value="">Все категории</option>
                 {[...new Set(data.materials.map((item) => item.category))]
                   .sort()
                   .map((value) => (
@@ -200,14 +200,14 @@ export function Dashboard({
               </select>
             </label>
             <label>
-              <span>Р—Р°РїР°СЃ РјР°С‚РµСЂРёР°Р»РѕРІ</span>
+              <span>Запас материалов</span>
               <select
                 value={stockFilter}
                 onChange={(event) => setStockFilter(event.target.value)}
               >
-                <option value="">Р›СЋР±РѕР№ Р·Р°РїР°СЃ</option>
-                <option value="low">РќРёР¶Рµ РјРёРЅРёРјСѓРјР°</option>
-                <option value="normal">Р’ РїСЂРµРґРµР»Р°С… РЅРѕСЂРјС‹</option>
+                <option value="">Любой запас</option>
+                <option value="low">Ниже минимума</option>
+                <option value="normal">В пределах нормы</option>
               </select>
             </label>
             <button
@@ -218,7 +218,7 @@ export function Dashboard({
                 setStockFilter("");
               }}
             >
-              РЎР±СЂРѕСЃРёС‚СЊ
+              Сбросить
             </button>
           </div>
           <div className="panels-grid">

@@ -9,3 +9,5 @@ node_modules
 coverage
 artifacts
 docs
+.teamcity/target
+.demo-test-*

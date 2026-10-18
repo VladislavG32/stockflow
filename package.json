@@ -12,7 +12,10 @@
     "test:integration": "tsx scripts/integration.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "test:migrations": "node scripts/test-migrations.mjs",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage tests/*.test.ts",
+    "demo:test-failure": "node scripts/demo/failing-code.mjs"
   },
   "dependencies": {
     "dotenv": "^18.0.8",

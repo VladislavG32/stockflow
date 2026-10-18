@@ -2,6 +2,8 @@ import "dotenv/config";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { readFileSync } from "node:fs";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 
 // Отдельный процесс миграций завершится до старта приложения. Ошибка останавливает контейнер.
 const url = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : null;
@@ -26,7 +28,21 @@ try {
   await client.query("SET lock_timeout = '5s'; SET statement_timeout = '60s'");
   const lock = await client.query("SELECT pg_try_advisory_lock(734081) AS acquired");
   if (!lock.rows[0].acquired) throw new Error("Another migration is running");
+  // Drizzle отслеживает время применения, но сам не запрещает переписывание уже
+  // применённого файла. Сверяем hash всей истории, чтобы не скрыть такое расхождение.
+  const exists = await client.query("SELECT to_regclass('drizzle.__drizzle_migrations') AS journal");
+  if (exists.rows[0].journal) {
+    const applied = await client.query("SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at,id");
+    const files = readMigrationFiles({ migrationsFolder: "./drizzle" });
+    if (applied.rows.length > files.length || applied.rows.some((row, index) =>
+      row.hash !== files[index].hash || Number(row.created_at) !== files[index].folderMillis)) {
+      throw new Error("Migration history differs from immutable files");
+    }
+  }
   await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
+  // Drizzle уже закоммитил ADD CONSTRAINT NOT VALID. Проверка существующих строк
+  // выполняется отдельно и повторяется безопасно, если предыдущий запуск прервался.
+  await client.query(readFileSync("database/post-migrate/validate-price.sql", "utf8"));
   console.log("Миграции StockFlow применены");
 } catch {
   console.error(

@@ -47,7 +47,7 @@ services:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
       BASE_URL: http://app:3000
       STOCKFLOW_TEST_DATABASE: stockflow_ci
-    command: [npm, run, "test:integration"]
+    command: [sh, -ec, "npm run test:integration && npm run test:migrations"]
     networks: [isolated]
     depends_on:
       app:

@@ -16,7 +16,7 @@ remote="stockflow-$target"
 path="/opt/stockflow-ci/releases/$sha"
 if [[ "$target" == prod ]]; then
   # PROD получает тот же SHA и digest, который уже прошёл STAGE.
-  [[ "$(git ls-remote origin refs/heads/prod | cut -f1)" == "$sha" ]] || { echo 'prod должен указывать на проверенный SHA STAGE (fast-forward)' >&2; exit 1; }
+  [[ "$(git ls-remote https://github.com/VladislavG32/stockflow.git refs/heads/prod | cut -f1)" == "$sha" ]] || { echo 'prod должен указывать на проверенный SHA STAGE (fast-forward)' >&2; exit 1; }
 fi
 ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "mkdir -p '$path/reference'"
 git archive HEAD | ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "tar -xf - -C '$path'"

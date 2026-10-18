@@ -3,17 +3,17 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 
-// РџСЂРѕРІРµСЂРєР° С‡РµСЂРµР· РЅР°СЃС‚РѕСЏС‰РёР№ HTTP Рё PostgreSQL, Р±РµР· РјРѕРєРѕРІ. РЈРґР°Р»СЏРµС‚ С‚РѕР»СЊРєРѕ СЃРѕР·РґР°РЅРЅС‹Рµ РµСЋ Р·Р°РїРёСЃРё.
-// BASE_URL РґРѕР»Р¶РµРЅ СѓРєР°Р·С‹РІР°С‚СЊ РЅР° РїСЂРёР»РѕР¶РµРЅРёРµ, РїРѕРґРєР»СЋС‡С‘РЅРЅРѕРµ Рє С‚РѕР№ Р¶Рµ DATABASE_URL.
+// Проверка через настоящий HTTP и PostgreSQL, без моков. Удаляет только созданные ею записи.
+// BASE_URL должен указывать на приложение, подключённое к той же DATABASE_URL.
 const baseUrl = process.env.BASE_URL ?? "http://127.0.0.1:3000";
-// Р”РѕРїСѓСЃРє С‚РѕР»СЊРєРѕ Рє СЃРїРµС†РёР°Р»СЊРЅРѕ РЅР°Р·РІР°РЅРЅРѕР№ РѕРґРЅРѕСЂР°Р·РѕРІРѕР№ Р‘Р”. РџСЂРѕРІРµСЂРєР° Р”Рћ Р»СЋР±С‹С… Р·Р°РїСЂРѕСЃРѕРІ.
-// РќР° СЂР°Р±РѕС‡РёС… TEST/STAGE/PROD СЌС‚РѕС‚ СЃС†РµРЅР°СЂРёР№ Р·Р°РїСѓСЃРєР°С‚СЊ РЅРµР»СЊР·СЏ, РґР°Р¶Рµ РґР»СЏ QA-Р·Р°РїРёСЃРµР№.
+// Допуск только к специально названной одноразовой БД. Проверка ДО любых запросов.
+// На рабочих TEST/STAGE/PROD этот сценарий запускать нельзя, даже для QA-записей.
 if (!process.env.DATABASE_URL || process.env.STOCKFLOW_TEST_DATABASE !== "stockflow_ci" ||
     new URL(process.env.DATABASE_URL).pathname !== "/stockflow_ci") {
-  throw new Error("Р Р°Р·СЂРµС€РµРЅР° С‚РѕР»СЊРєРѕ РѕС‚РґРµР»СЊРЅР°СЏ stockflow_ci СЃ STOCKFLOW_TEST_DATABASE=stockflow_ci");
+  throw new Error("Разрешена только отдельная stockflow_ci с STOCKFLOW_TEST_DATABASE=stockflow_ci");
 }
 const code = `QA-${randomUUID().slice(0, 12).toUpperCase()}`;
-const supplierName = `${code}-РџРѕСЃС‚Р°РІС‰РёРє`;
+const supplierName = `${code}-Поставщик`;
 const receiptNumbers: string[] = [];
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 async function request(
@@ -47,9 +47,9 @@ async function main() {
   await request("/api/ready", undefined, "GET", 200);
   const material = {
     code,
-    name: `=РўРµСЃС‚ ${code}`,
+    name: `=Тест ${code}`,
     category: "QA",
-    unit: "С€С‚.",
+    unit: "шт.",
     minimumStock: 10,
     targetStock: 20,
   };
@@ -57,14 +57,14 @@ async function main() {
   const { id: supplierId } = await request("/api/suppliers", {
     name: supplierName,
   });
-  // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РїСЂРёР»РѕР¶РµРЅРёРµ Рё cleanup РїРѕРґРєР»СЋС‡РµРЅС‹ Рє РѕРґРЅРѕР№ Р±Р°Р·Рµ, РґРѕ Р»СЋР±С‹С… СѓРґР°Р»РµРЅРёР№.
+  // Проверяем, что приложение и cleanup подключены к одной базе, до любых удалений.
   const stored = await pool.query("select id from materials where code = $1", [
     code,
   ]);
   assert.equal(
     stored.rows[0]?.id,
     materialId,
-    "BASE_URL Рё DATABASE_URL РґРѕР»Р¶РЅС‹ РѕС‚РЅРѕСЃРёС‚СЊСЃСЏ Рє РѕРґРЅРѕР№ Р‘Р”",
+    "BASE_URL и DATABASE_URL должны относиться к одной БД",
   );
   await request("/api/materials", material, "POST", 409);
   await request("/api/suppliers", { name: supplierName }, "POST", 409);
@@ -113,7 +113,7 @@ async function main() {
   );
   const csv = await fetch(`${baseUrl}/api/replenishment/export`);
   assert.equal(csv.status, 200);
-  assert.match(await csv.text(), new RegExp(`'=РўРµСЃС‚ ${code}`));
+  assert.match(await csv.text(), new RegExp(`'=Тест ${code}`));
   const second = `${code}-R2`;
   receiptNumbers.push(second);
   await request("/api/receipts", makeReceipt(second, 5));
@@ -121,7 +121,7 @@ async function main() {
   assert.equal(
     (await current()).recommended,
     0,
-    "РќР° РјРёРЅРёРјСѓРјРµ Р·Р°РєСѓРїРєР° РЅРµ С‚СЂРµР±СѓРµС‚СЃСЏ",
+    "На минимуме закупка не требуется",
   );
   await request(
     `/api/materials/${materialId}`,
@@ -136,7 +136,7 @@ async function main() {
     "PATCH",
     400,
   );
-  // РћРґРЅРѕРІСЂРµРјРµРЅРЅС‹Рµ РїРѕСЃС‚СѓРїР»РµРЅРёСЏ РЅРµ РґРѕР»Р¶РЅС‹ С‚РµСЂСЏС‚СЊ РѕР±РЅРѕРІР»РµРЅРёСЏ РѕСЃС‚Р°С‚РєР°.
+  // Одновременные поступления не должны терять обновления остатка.
   await Promise.all(
     Array.from({ length: 4 }, async (_, index) => {
       const number = `${code}-C${index}`;
@@ -168,7 +168,7 @@ async function main() {
   });
   assert.equal(bigJson.status, 413);
   console.log(
-    "PASS: PostgreSQL, СЃРїСЂР°РІРѕС‡РЅРёРєРё, РїРѕСЃС‚СѓРїР»РµРЅРёСЏ, РѕС€РёР±РєРё, РїР°СЂР°Р»Р»РµР»СЊРЅС‹Рµ РѕРїРµСЂР°С†РёРё, РїРѕРїРѕР»РЅРµРЅРёРµ Рё CSV",
+    "PASS: PostgreSQL, справочники, поступления, ошибки, параллельные операции, пополнение и CSV",
   );
 }
 
