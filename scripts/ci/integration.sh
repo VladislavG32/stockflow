@@ -14,7 +14,7 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p artifacts
 "${ci[@]}" up -d --no-build --wait app
-"${ci[@]}" run --rm --no-build tests
+"${ci[@]}" run --rm --no-deps --pull never tests
 # Эталон создаётся на TEST только из успешно проверенной одноразовой БД.
 "${ci[@]}" exec -T db pg_dump -U stockflow -d stockflow_ci --schema-only --no-owner --no-privileges > artifacts/schema.raw.sql
 sed -E '/^--/d; /^\\(un)?restrict /d; /^[[:space:]]*$/d' artifacts/schema.raw.sql > artifacts/schema.sql
