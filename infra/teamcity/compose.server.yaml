@@ -1,0 +1,17 @@
+name: stockflow-teamcity
+services:
+  server:
+    # Версия совпадает с Kotlin DSL. Перед установкой проверить доступность тега.
+    image: jetbrains/teamcity-server:2026.2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8111:8111"
+    environment:
+      TEAMCITY_SERVER_MEM_OPTS: -Xms512m -Xmx1536m
+    mem_limit: 2300m
+    volumes:
+      - server_data:/data/teamcity_server/datadir
+      - server_logs:/opt/teamcity/logs
+volumes:
+  server_data:
+  server_logs:

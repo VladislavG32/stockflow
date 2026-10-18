@@ -1,0 +1,26 @@
+name: stockflow-teamcity-agent
+services:
+  agent:
+    image: jetbrains/teamcity-agent:2026.2-linux-sudo
+    restart: unless-stopped
+    # Docker socket даёт права root на TEST. Только доверенный личный репозиторий,
+    # без запуска fork PR. На STAGE/PROD сокет не передаётся.
+    user: "0"
+    environment:
+      SERVER_URL: http://host.docker.internal:8111
+      AGENT_NAME: stockflow-test-agent
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 768m
+    volumes:
+      - agent_conf:/data/teamcity_agent/conf
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Одинаковые пути нужны вложенным docker run: mount выполняет Docker хоста.
+      - /opt/buildagent/work:/opt/buildagent/work
+      - /opt/buildagent/temp:/opt/buildagent/temp
+      - /opt/buildagent/system:/opt/buildagent/system
+      - /opt/buildagent/tools:/opt/buildagent/tools
+      - /opt/buildagent/plugins:/opt/buildagent/plugins
+      - /opt/stockflow-ci/ssh:/root/.ssh:ro
+volumes:
+  agent_conf:

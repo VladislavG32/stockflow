@@ -1,0 +1,13 @@
+# Дополнение к прежнему compose.yaml, а не новый проект с новым томом БД.
+# APP_IMAGE и MIGRATOR_IMAGE — ссылки repo@sha256:..., полученные после push.
+services:
+  app:
+    build: !reset null
+    image: ${APP_IMAGE:?Set immutable APP_IMAGE}
+    # Миграции выполняются отдельным проверяемым шагом доставки.
+    depends_on: !override
+      db:
+        condition: service_healthy
+  migrate:
+    build: !reset null
+    image: ${MIGRATOR_IMAGE:?Set immutable MIGRATOR_IMAGE}

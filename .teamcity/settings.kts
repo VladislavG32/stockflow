@@ -1,0 +1,46 @@
+import jetbrains.buildServer.configs.kotlin.*
+import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.triggers.vcs
+import jetbrains.buildServer.configs.kotlin.triggers.finishBuildTrigger
+import jetbrains.buildServer.configs.kotlin.vcs.GitVcsRoot
+
+// Классические Build Configuration работают в бесплатной On-Premises редакции.
+// Настройки читаются из доверенной ветки подготовки, не из произвольного PR.
+version = "2026.2"
+project {
+    vcsRoot(Source)
+    buildType(Verify)
+    buildType(Publish)
+}
+object Source : GitVcsRoot({
+    name = "StockFlow GitHub"
+    url = "https://github.com/VladislavG32/stockflow.git"
+    branch = "refs/heads/dev"
+    branchSpec = "+:refs/heads/*"
+    // Публичному репозиторию не нужен GitHub PAT для чтения.
+})
+object Verify : BuildType({
+    name = "01 Verify all branches"
+    maxRunningBuilds = 1
+    vcs { root(Source) }
+    steps { script { name = "Проверки и Docker build"; scriptContent = "bash scripts/ci/verify.sh" } }
+    triggers { vcs { branchFilter = "+:*" } }
+    artifactRules = "artifacts/** => checks"
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+})
+object Publish : BuildType({
+    name = "02 Publish DEV PROD"
+    maxRunningBuilds = 1
+    vcs { root(Source); branchFilter = "+:dev\n+:prod" }
+    params {
+        param("env.CI_BRANCH", "%teamcity.build.branch%")
+        param("env.IMAGE_REPO", "SET_DOCKERHUB_USER/stockflow")
+        // Password-параметры env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN задаются
+        // в UI ТОЛЬКО этой конфигурации: Verify не должен их наследовать.
+    }
+    dependencies { snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL } }
+    steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
+    triggers { finishBuildTrigger { buildType = "${Verify.id}"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
+    artifactRules = "artifacts/release.env"
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+})
