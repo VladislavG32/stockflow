@@ -17,7 +17,7 @@ object Source : GitVcsRoot({
     name = "StockFlow GitHub"
     url = "https://github.com/VladislavG32/stockflow.git"
     branch = "refs/heads/dev"
-    branchSpec = "+:refs/heads/*"
+    branchSpec = "+:refs/heads/(*)"
     // Публичному репозиторию не нужен GitHub PAT для чтения.
 })
 object Verify : BuildType({
@@ -34,19 +34,19 @@ object Publish : BuildType({
     id("StockFlow_Publish")
     name = "02 Publish DEV PROD"
     maxRunningBuilds = 1
-    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:prod" }
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:<default>\n+:prod" }
     params {
-        param("env.CI_BRANCH", "%teamcity.build.branch%")
+        param("env.CI_BRANCH", "%teamcity.build.vcs.branch.${DslContext.projectId.value}_Source%")
         param("env.IMAGE_REPO", "SET_DOCKERHUB_USER/stockflow")
         // Password-параметры env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN задаются
         // в UI ТОЛЬКО этой конфигурации: Verify не должен их наследовать.
     }
     dependencies {
         snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Verify) { buildRule = sameChain(); artifactRules = "checks/schema.sql => reference\nchecks/migrations.txt => reference" }
+        artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/schema.sql => reference\nchecks/migrations.txt => reference" }
     }
     steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
-    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:<default>\n+:prod" } }
     artifactRules = "artifacts/release.env\nreference/* => reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
@@ -55,13 +55,13 @@ object Stage : BuildType({
     id("StockFlow_Stage")
     name = "03 Deploy STAGE from DEV"
     maxRunningBuilds = 1
-    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev" }
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:<default>" }
     dependencies {
         snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming\nreference/* => reference" }
+        artifacts(Publish) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming\nreference/* => reference" }
     }
     steps { script { name = "Обновление STAGE с сохранением БД"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
-    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev\n+:<default>" } }
     artifactRules = "artifacts/release.env\nartifacts/stage-reference/* => reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
