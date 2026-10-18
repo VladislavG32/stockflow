@@ -6,11 +6,11 @@ services:
     # Docker socket даёт права root на TEST. Только доверенный личный репозиторий,
     # без запуска fork PR. На STAGE/PROD сокет не передаётся.
     user: "0"
+    # Обратный SSH-туннель Windows→TEST слушает только loopback TEST:18111.
+    network_mode: host
     environment:
-      SERVER_URL: http://host.docker.internal:8111
+      SERVER_URL: http://127.0.0.1:18111
       AGENT_NAME: stockflow-test-agent
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     mem_limit: 768m
     volumes:
       - agent_conf:/data/teamcity_agent/conf

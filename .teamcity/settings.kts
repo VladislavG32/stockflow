@@ -20,18 +20,20 @@ object Source : GitVcsRoot({
     // Публичному репозиторию не нужен GitHub PAT для чтения.
 })
 object Verify : BuildType({
+    id("StockFlow_Verify")
     name = "01 Verify all branches"
     maxRunningBuilds = 1
-    vcs { root(Source) }
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
     steps { script { name = "Проверки и Docker build"; scriptContent = "bash scripts/ci/verify.sh" } }
     triggers { vcs { branchFilter = "+:*" } }
     artifactRules = "artifacts/** => checks"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 object Publish : BuildType({
+    id("StockFlow_Publish")
     name = "02 Publish DEV PROD"
     maxRunningBuilds = 1
-    vcs { root(Source); branchFilter = "+:dev\n+:prod" }
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:prod" }
     params {
         param("env.CI_BRANCH", "%teamcity.build.branch%")
         param("env.IMAGE_REPO", "SET_DOCKERHUB_USER/stockflow")
@@ -40,7 +42,7 @@ object Publish : BuildType({
     }
     dependencies { snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL } }
     steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
-    triggers { finishBuildTrigger { buildType = "${Verify.id}"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
     artifactRules = "artifacts/release.env"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
