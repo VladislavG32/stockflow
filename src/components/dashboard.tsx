@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { matchesStockFilter } from "@/lib/inventory";
 import type { DashboardData } from "@/lib/types";
 import { AppShell, BoxIcon, sections } from "./ui";
 import { InventoryForms } from "./inventory-forms";
@@ -12,7 +13,7 @@ import {
   SupplierList,
 } from "./inventory-tables";
 
-// После записи новый снимок обновляет каталог, остатки и рекомендации вместе.
+// РџРѕСЃР»Рµ Р·Р°РїРёСЃРё РЅРѕРІС‹Р№ СЃРЅРёРјРѕРє РѕР±РЅРѕРІР»СЏРµС‚ РєР°С‚Р°Р»РѕРі, РѕСЃС‚Р°С‚РєРё Рё СЂРµРєРѕРјРµРЅРґР°С†РёРё РІРјРµСЃС‚Рµ.
 export function Dashboard({
   initialData,
 }: {
@@ -22,7 +23,7 @@ export function Dashboard({
   const [error, setError] = useState(
     initialData
       ? ""
-      : "Не удалось загрузить склад. Проверьте PostgreSQL и применение миграций.",
+      : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРєР»Р°Рґ. РџСЂРѕРІРµСЂСЊС‚Рµ PostgreSQL Рё РїСЂРёРјРµРЅРµРЅРёРµ РјРёРіСЂР°С†РёР№.",
   );
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
@@ -41,7 +42,7 @@ export function Dashboard({
       setUpdated(new Date().toLocaleTimeString("ru-RU"));
     } catch {
       setError(
-        "Не удалось обновить данные. Предыдущий снимок может быть устаревшим. Проверьте соединение и нажмите «Обновить данные».",
+        "РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ. РџСЂРµРґС‹РґСѓС‰РёР№ СЃРЅРёРјРѕРє РјРѕР¶РµС‚ Р±С‹С‚СЊ СѓСЃС‚Р°СЂРµРІС€РёРј. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРѕРµРґРёРЅРµРЅРёРµ Рё РЅР°Р¶РјРёС‚Рµ В«РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹РµВ».",
       );
       throw new Error("Refresh failed");
     } finally {
@@ -57,8 +58,7 @@ export function Dashboard({
       (item) =>
         matches(item.name, item.code, item.category) &&
         (!category || item.category === category) &&
-        (!stockFilter ||
-          (stockFilter === "low" ? item.shortage : !item.shortage)),
+        matchesStockFilter(item.balance, item.shortage, stockFilter),
     ) ?? [];
   const visibleSuppliers =
     data?.suppliers.filter((item) => matches(item.name, item.contact)) ?? [];
@@ -81,39 +81,39 @@ export function Dashboard({
     <AppShell>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">ПРОСТОЙ УЧЁТ. ПОЛНЫЙ ОБЗОР.</p>
+          <p className="eyebrow">РџР РћРЎРўРћР™ РЈР§РЃРў. РџРћР›РќР«Р™ РћР‘Р—РћР .</p>
           <h1>StockFlow</h1>
-          <p className="subtitle">Система автоматизации складского учёта</p>
+          <p className="subtitle">РЎРёСЃС‚РµРјР° Р°РІС‚РѕРјР°С‚РёР·Р°С†РёРё СЃРєР»Р°РґСЃРєРѕРіРѕ СѓС‡С‘С‚Р°</p>
         </div>
-        <span className="version-tag">ЛР №3 / 0.2</span>
+        <span className="version-tag">Р›Р  в„–3 / 0.2</span>
       </div>
       <div className="intro-banner">
         <div className="intro-icon">
           <BoxIcon />
         </div>
         <div>
-          <strong>Всё о складе — в одном пространстве</strong>
+          <strong>Р’СЃС‘ Рѕ СЃРєР»Р°РґРµ вЂ” РІ РѕРґРЅРѕРј РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРµ</strong>
           <p>
-            Живые данные, понятные операции и план пополнения до целевого
-            запаса.
+            Р–РёРІС‹Рµ РґР°РЅРЅС‹Рµ, РїРѕРЅСЏС‚РЅС‹Рµ РѕРїРµСЂР°С†РёРё Рё РїР»Р°РЅ РїРѕРїРѕР»РЅРµРЅРёСЏ РґРѕ С†РµР»РµРІРѕРіРѕ
+            Р·Р°РїР°СЃР°.
           </p>
         </div>
         <a href="#replenishment" className="banner-link">
-          План пополнения ↗
+          РџР»Р°РЅ РїРѕРїРѕР»РЅРµРЅРёСЏ в†—
         </a>
       </div>
       <div className="refresh-row">
         <span aria-live="polite">
           {updated
-            ? `Данные обновлены в ${updated}`
-            : "Данные из PostgreSQL · обновляйте при работе в нескольких вкладках"}
+            ? `Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІР»РµРЅС‹ РІ ${updated}`
+            : "Р”Р°РЅРЅС‹Рµ РёР· PostgreSQL В· РѕР±РЅРѕРІР»СЏР№С‚Рµ РїСЂРё СЂР°Р±РѕС‚Рµ РІ РЅРµСЃРєРѕР»СЊРєРёС… РІРєР»Р°РґРєР°С…"}
         </span>
         <button
           className="button secondary"
           disabled={refreshing}
           onClick={() => void refresh().catch(() => {})}
         >
-          {refreshing ? "Обновление…" : "Обновить данные"}
+          {refreshing ? "РћР±РЅРѕРІР»РµРЅРёРµвЂ¦" : "РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ"}
         </button>
       </div>
       {error && (
@@ -123,7 +123,7 @@ export function Dashboard({
       )}
       {data && (
         <>
-          <div className="summary-grid" aria-label="Показатели всего склада">
+          <div className="summary-grid" aria-label="РџРѕРєР°Р·Р°С‚РµР»Рё РІСЃРµРіРѕ СЃРєР»Р°РґР°">
             {sections.map((section, index) => (
               <a
                 className="summary-card"
@@ -133,7 +133,7 @@ export function Dashboard({
                 <div className="summary-top">
                   <span>{section.label}</span>
                   <span className="summary-arrow" aria-hidden="true">
-                    ↗
+                    в†—
                   </span>
                 </div>
                 <div className="summary-value">
@@ -141,10 +141,10 @@ export function Dashboard({
                   <span>
                     {
                       [
-                        "в каталоге",
-                        "партнёров",
-                        "операций",
-                        "позиций в наличии",
+                        "РІ РєР°С‚Р°Р»РѕРіРµ",
+                        "РїР°СЂС‚РЅС‘СЂРѕРІ",
+                        "РѕРїРµСЂР°С†РёР№",
+                        "РїРѕР·РёС†РёР№ РІ РЅР°Р»РёС‡РёРё",
                       ][index]
                     }
                   </span>
@@ -152,10 +152,10 @@ export function Dashboard({
                 <span className="summary-caption">
                   {
                     [
-                      "Каталог материалов",
-                      "Партнёры склада",
-                      "Журнал поступлений",
-                      "Положительные остатки",
+                      "РљР°С‚Р°Р»РѕРі РјР°С‚РµСЂРёР°Р»РѕРІ",
+                      "РџР°СЂС‚РЅС‘СЂС‹ СЃРєР»Р°РґР°",
+                      "Р–СѓСЂРЅР°Р» РїРѕСЃС‚СѓРїР»РµРЅРёР№",
+                      "РџРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рµ РѕСЃС‚Р°С‚РєРё",
                     ][index]
                   }
                 </span>
@@ -165,33 +165,33 @@ export function Dashboard({
           {shortageCount > 0 && (
             <a href="#replenishment" className="shortage-banner">
               <span>
-                ↗ Требуют пополнения: <strong>{shortageCount}</strong>
+                в†— РўСЂРµР±СѓСЋС‚ РїРѕРїРѕР»РЅРµРЅРёСЏ: <strong>{shortageCount}</strong>
               </span>
-              <span>Открыть рекомендации →</span>
+              <span>РћС‚РєСЂС‹С‚СЊ СЂРµРєРѕРјРµРЅРґР°С†РёРё в†’</span>
             </a>
           )}
           <InventoryForms data={data} onSaved={refresh} />
           <div className="data-label">
-            <h2>Обзор склада</h2>
-            <span>Показатели выше относятся ко всему складу</span>
+            <h2>РћР±Р·РѕСЂ СЃРєР»Р°РґР°</h2>
+            <span>РџРѕРєР°Р·Р°С‚РµР»Рё РІС‹С€Рµ РѕС‚РЅРѕСЃСЏС‚СЃСЏ РєРѕ РІСЃРµРјСѓ СЃРєР»Р°РґСѓ</span>
           </div>
           <div className="filter-bar">
             <label className="search-field">
-              <span>Поиск по всем разделам</span>
+              <span>РџРѕРёСЃРє РїРѕ РІСЃРµРј СЂР°Р·РґРµР»Р°Рј</span>
               <input
                 type="search"
-                placeholder="Название, код, поставщик, номер операции…"
+                placeholder="РќР°Р·РІР°РЅРёРµ, РєРѕРґ, РїРѕСЃС‚Р°РІС‰РёРє, РЅРѕРјРµСЂ РѕРїРµСЂР°С†РёРёвЂ¦"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
             <label>
-              <span>Категория материалов</span>
+              <span>РљР°С‚РµРіРѕСЂРёСЏ РјР°С‚РµСЂРёР°Р»РѕРІ</span>
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
               >
-                <option value="">Все категории</option>
+                <option value="">Р’СЃРµ РєР°С‚РµРіРѕСЂРёРё</option>
                 {[...new Set(data.materials.map((item) => item.category))]
                   .sort()
                   .map((value) => (
@@ -200,14 +200,14 @@ export function Dashboard({
               </select>
             </label>
             <label>
-              <span>Запас материалов</span>
+              <span>Р—Р°РїР°СЃ РјР°С‚РµСЂРёР°Р»РѕРІ</span>
               <select
                 value={stockFilter}
                 onChange={(event) => setStockFilter(event.target.value)}
               >
-                <option value="">Любой запас</option>
-                <option value="low">Ниже минимума</option>
-                <option value="normal">В пределах нормы</option>
+                <option value="">Р›СЋР±РѕР№ Р·Р°РїР°СЃ</option>
+                <option value="low">РќРёР¶Рµ РјРёРЅРёРјСѓРјР°</option>
+                <option value="normal">Р’ РїСЂРµРґРµР»Р°С… РЅРѕСЂРјС‹</option>
               </select>
             </label>
             <button
@@ -218,7 +218,7 @@ export function Dashboard({
                 setStockFilter("");
               }}
             >
-              Сбросить
+              РЎР±СЂРѕСЃРёС‚СЊ
             </button>
           </div>
           <div className="panels-grid">
