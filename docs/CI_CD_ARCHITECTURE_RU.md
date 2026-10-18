@@ -1,30 +1,40 @@
-# Архитектура CI/CD StockFlow
+# Архитектура CI/CD StockFlow на Linux
 
-## Где работает каждый компонент
+## Выбранное размещение
 
-| Место | Назначение | Ограничение |
+| Узел | Роль | Ресурсы/состояние |
 |---|---|---|
-| Windows-хост | TeamCity Server в Docker Desktop | Лимит контейнера 2300 МБ; сначала проверить свободную RAM |
-| TEST 192.168.56.11 | Один TeamCity Agent, последовательные сборки и отдельная stockflow_ci | Агент 768 МБ; npm-контейнер 2300 МБ; рабочая БД ЛР3 сохраняется |
-| STAGE 192.168.56.12 | Приём проверенного DEV-образа | Без сборки Next.js на STAGE |
-| PROD 192.168.56.13 | Только сознательное продвижение успешного STAGE | Без автоматического VCS/finish-триггера |
-| Docker Hub | Общедоступный учебный репозиторий образов | Платная подписка не требуется; учитывать rate limit |
+| Новая CI Linux VM | TeamCity Server + stockflow-build-agent + BuildKit | Предлагается4vCPU/8ГБ/60ГБ; пока не создана, IP192.168.56.14 проверить |
+| TEST192.168.56.11 | stockflow-test-agent: Acceptance и SSH-доставка |4ГБ; рабочие app/db сохраняются; никаких тяжёлых сборок |
+| STAGE192.168.56.12 | Приём digest, проверка схемы |4ГБ; исходный volume и собственные данные |
+| PROD192.168.56.13 | Только ручное продвижение STAGE |4ГБ; backup/rehearsal перед миграцией |
+| Windows | PowerShell, SSH, Git, браузер, скриншоты | Docker Desktop не требуется |
+| Домашний Ryzen/64ГБ | Альтернативный CI Linux | Только после проверки Linux/Docker/диска и частного маршрута к TEST |
 
-Перед запуском на Windows: `Get-CimInstance Win32_OperatingSystem | Select-Object FreePhysicalMemory,TotalVisibleMemorySize`.
-На TEST: `free -h`, `df -h /`, `docker stats --no-stream`. Общий бюджет сборки близок
-к 4 ГБ; лимит агента НЕ ограничивает контейнеры, запущенные через docker.sock.
-Сборки последовательны. При OOM выполнять сборки агентом на Windows-хосте в Linux
-Docker, оставив агент TEST подключённым для демонстрации доставки; предварительно
-изменить agent requirement в DSL. Не обещаем, что одна VM выдержит всё одновременно.
-Не запускать параллельные TeamCity-конфигурации: один агент выполняет одну сборку.
-При нехватке памяти остановить только лишние локальные процессы/сборки, не PostgreSQL.
+Существующие4ГБ VM не подходят для Server+Next build+рабочей PostgreSQL одновременно.
+Размещение только Server на STAGE/PROD также добавляет риск учебным данным. Новая VM
+изолирует CI и не требует маршрутизации в другую физическую сеть. На ноутбуке должно
+хватать RAM для самой VM: проверить до её создания, при необходимости штатно завершить
+неиспользуемую PROD до ЛР8. Если8ГБ выделить нельзя, выбрать домашний сервер ПОСЛЕ
+проверок из LINUX_CI_SETUP_RU, а не запускать сборки на TEST наугад.
+
+Server ограничен2300МБ, build-agent768МБ, BuildKit3ГБ. Контейнер npm2300МБ завершается
+до сборки BuildKit. TEST acceptance: db384МБ, app512МБ, tools512МБ, migrator256МБ;
+агент768МБ отдельно, tmpfs256МБ входит в потребление db. Preflight проверяет MemAvailable
+и свободный диск, останавливает задачу при недостатке; не гарантирует успех при
+параллельной посторонней нагрузке. Один build-agent и один TEST-agent, без дубликатов.
+TEST никогда не выполняет npm ci/Next build/docker build. Root socket обоих агентов
+даёт root на соответствующем хосте; это доверенный личный репозиторий, без fork PR.
+
+[Полная настройка Linux, сеть, адреса и resource gates](LINUX_CI_SETUP_RU.md).
 
 ## Цепочка и границы доверия
 
 ```mermaid
 flowchart LR
-  F[feature / fix / другие ветки] --> V[Verify: lint, types, unit, SQL, secrets, build, PostgreSQL]
-  V -->|только успешные dev / prod| P[Publish: app + migrator, digest]
+  F[feature / fix / другие ветки] --> V[CI Verify: lint, unit, SQL, secrets, build, tar]
+  V --> A[TEST Acceptance: готовые образы, HTTP, PostgreSQL]
+  A -->|только успешные dev / prod| P[CI Publish: те же app + migrator, digest]
   P -->|только dev| S[STAGE: backup, сравнение, миграция, readiness]
   S -->|ручной Run + prod SHA| R[PROD: backup, репетиция, миграция, readiness]
 ```
@@ -40,8 +50,9 @@ Kotlin DSL — классические Build Configuration TeamCity 2026.2. О�
 Настройки проекта читать из доверенной ветки, а не из ветки запускаемой сборки.
 Для ранних работ используйте соответствующую контрольную ветку настроек.
 
-Verify имеет VCS-триггер для всех веток. Publish имеет finish-триггер успешного
-Verify только dev/prod и snapshot dependency того же исходного состояния.
+Verify имеет VCS-триггер всех веток на build-agent CI. С ЛР7 Acceptance имеет
+finish-триггер Verify всех веток и snapshot dependency; выполняется TEST-agent.
+Publish с ЛР7 зависит от Acceptance (раньше — Verify), только dev/prod.
 STAGE зависит от Publish того же состояния и получает артефакт через `sameChain()`.
 PROD зависит от STAGE; обычного триггера нет. Все snapshot-зависимости запрещают
 продолжение при ошибке/отмене. Для ручного продвижения используйте Promote
@@ -54,20 +65,25 @@ Build agent использует checkout на агенте (Git metadata нуж
 
 ## Образы и секреты
 
-Publish собирает runner и migrator с одним полным SHA. Теги `dev-<40 символов SHA>`
-и `prod-<SHA>`, у migrator суффикс `-migrator`. После push/pull записываются
-`repo@sha256:...` — именно эти ссылки развёртываются. На PROD переносится тот же
-DEV-артефакт успешного STAGE; отдельная публикация prod нужна для требования ЛР4,
-но не является поводом повторно собирать уже проверенную версию для PROD.
+Verify на CI собирает runner/migrator, с ЛР7 test-tools; сохраняет docker save+gzip
+и sha256 в artifacts. TEST загружает архив той же sameChain, сверяет checksum и
+revision labels; запускает без --build. При ошибке Acceptance Publish запрещён.
+Publish на CI загружает тот же архив, только добавляет Hub-теги, push/pull и digest.
+Теги dev-<полныйSHA>/prod-<полныйSHA>, migrator с суффиксом-migrator.
+Feature/FIX проходят все проверки, но их образы в Hub не публикуются. PROD получает
+те же digest успешного STAGE; его конфигурация не имеет автоматического триггера.
+Артефакты не должны подменяться последним успешным билдом другой ветки: sameChain strict.
 
 DOCKERHUB_TOKEN — Password-параметр только Publish. Не задавать его в родительском
 проекте. Проект публичный: для GitHub checkout PAT не требуется. Для приватного
 репозитория нужен read-only deploy key/PAT в VCS Root, без передачи приложению.
 SSH-ключ — локальный файл TEST; в Git только ssh_config.example. Сверить fingerprint
 STAGE/PROD по консоли VirtualBox, затем записать known_hosts. Не применять
-StrictHostKeyChecking=no. Server доступен агенту через обратный SSH-туннель.
+StrictHostKeyChecking=no. Server доступен обоим агентам по private TEAMCITY_SERVER_URL, например
+http://192.168.56.14:8111. localhost внутри агента не является Server. Windows-туннель
+не участвует в работе CI. Для домашнего сервера используется проверенный private VPN/LAN.
 
-Агент с docker.sock эквивалентен root на TEST: даже Verify без секретных параметров
+Агент с docker.sock эквивалентен root на своём Linux-хосте: даже Verify без секретных параметров
 может читать файлы TEST. Поэтому не подключать fork PR и недоверенных авторов,
 не запускать произвольный код из Интернета. Это персональный доверенный учебный
 репозиторий. Защита веток/реальный reviewer важны; маскирование пароля в журнале
@@ -105,3 +121,9 @@ Backup — custom pg_dump, pg_restore --list, фактическое восст�
 - [Официальный Docker Agent и одинаковые bind paths](https://github.com/JetBrains/teamcity-docker-images/blob/master/dockerhub/teamcity-agent/README.md).
 - [Gitleaks](https://github.com/gitleaks/gitleaks).
 - [Squawk CLI](https://squawkhq.com/docs/cli/).
+
+Ресурсные и сетевые решения сверены с первичными источниками:
+[TeamCity system requirements](https://www.jetbrains.com/help/teamcity/system-requirements.html),
+[зависимости артефактов](https://www.jetbrains.com/help/teamcity/artifact-dependencies.html),
+[лимит памяти Docker BuildKit](https://docs.docker.com/build/builders/drivers/docker-container/).
+Это обоснование конфигурации, не доказательство реального запуска на VM.

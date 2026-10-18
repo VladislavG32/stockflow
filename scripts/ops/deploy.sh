@@ -2,8 +2,9 @@
 # Меняется только приложение; существующий db и его том сохраняются.
 set -Eeuo pipefail
 root=$(pwd)
+bash scripts/ci/preflight.sh deploy
 source "$root/scripts/ops/common.sh"
-[[ "${1:?}" == "$TARGET" ]] || exit 1
+[[ "${1:?}" == "$TARGET" && ( "$TARGET" == stage || "$TARGET" == prod ) ]] || exit 1
 export APP_IMAGE=${2:?} MIGRATOR_IMAGE=${3:?}
 release_sha=${4:?}
 [[ "$release_sha" =~ ^[a-f0-9]{40}$ ]] || exit 1
