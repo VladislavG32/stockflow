@@ -3,7 +3,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>stockflow</groupId><artifactId>teamcity-settings</artifactId><version>1.0</version>
-  <properties><teamcity.dsl.version>2026.2</teamcity.dsl.version><kotlin.version>2.0.21</kotlin.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><teamcity.server.url>http://127.0.0.1:8111</teamcity.server.url></properties>
+  <properties><teamcity.dsl.version>2026.2</teamcity.dsl.version><kotlin.version>2.0.21</kotlin.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><teamcity.server.url>${env.TEAMCITY_SERVER_URL}</teamcity.server.url></properties>
   <repositories>
     <!-- GitVcsRoot, script и triggers поставляются установленными плагинами сервера. -->
     <repository><id>teamcity-server</id><url>${teamcity.server.url}/app/dsl-plugins-repository</url><snapshots><enabled>true</enabled></snapshots></repository>

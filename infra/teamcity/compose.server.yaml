@@ -4,9 +4,11 @@ services:
     # Версия совпадает с Kotlin DSL. Перед установкой проверить доступность тега.
     image: jetbrains/teamcity-server:2026.2
     restart: unless-stopped
+    # Только адрес Host-Only/VPN. Не публиковать на 0.0.0.0 или в Интернет.
     ports:
-      - "127.0.0.1:8111:8111"
+      - "${TEAMCITY_BIND_ADDRESS:?Set private Linux bind address}:8111:8111"
     environment:
+      TEAMCITY_SERVER_URL: ${TEAMCITY_SERVER_URL:?Set private server URL}
       TEAMCITY_SERVER_MEM_OPTS: -Xms512m -Xmx1536m
     mem_limit: 2300m
     volumes:

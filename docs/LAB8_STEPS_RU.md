@@ -69,8 +69,9 @@ git push -u origin feature/lab8-price
 
 Если история разошлась после PR merge, сделать обычный merge с проверкой diff.
 TeamCity Settings root выбрать codex/lab8-manual-ready, Always current settings.
-Verify feature должен успешно проверить цену и изолированную PostgreSQL на TEST.
-Скачать checks/schema.sql и checks/migrations.txt успешного build в reference/
+Verify feature должен собрать образы на CI, затем Acceptance того же SHA
+должен проверить цену и PostgreSQL на TEST.
+Скачать checks/schema.sql и checks/migrations.txt успешного Acceptance build в reference/
 локального checkout. Записать build number и SHA. Это реальный эталон TEST-контура,
 а не автоматически обновлённая рабочая stockflow на TEST. Снять скриншот.
 
@@ -91,13 +92,21 @@ git push
 На STAGE, отдельный checkout; рабочий ~/stockflow не переключать:
 
 ```bash
-git clone -b codex/lab8-manual-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-lab8-manual
+git clone -b feature/lab8-price https://github.com/VladislavG32/stockflow.git ~/stockflow-lab8-manual
 cd ~/stockflow-lab8-manual
+read -rp 'Полный SHA успешных Verify и Acceptance: ' VERIFIED_SHA
+[[ "$VERIFIED_SHA" =~ ^[a-f0-9]{40}$ ]]
+git switch --detach "$VERIFIED_SHA"
+test ! -f drizzle/0002_receipt_document.sql
 # target.env уже настроен в ЛР5. Добавьте MIGRATION_MODE=manual.
 nano /opt/stockflow-ci/target.env
 mkdir -p /opt/stockflow-ci/{state,backups}
-export MIGRATOR_IMAGE="stockflow-manual-migrator:$(git rev-parse HEAD)"
-docker build --target migrator -t "$MIGRATOR_IMAGE" .
+# Скачать checks/ci-images.tar.gz и ci-images.sha256 из успешного Verify на CI
+# того же SHA в incoming/. Записать build number; schema взять из Acceptance TEST.
+mkdir -p incoming
+bash scripts/ci/preflight.sh test
+bash scripts/ci/load-bundle.sh incoming
+export MIGRATOR_IMAGE="stockflow-ci-migrator:$(git rev-parse HEAD)"
 # APP_IMAGE нужен только для интерполяции compose; app сейчас НЕ пересоздаётся.
 source /opt/stockflow-ci/target.env
 APP_ID=$(docker compose --project-directory "$DEPLOY_DIR" --env-file "$DEPLOY_DIR/.env" -p "$PROJECT" -f "$DEPLOY_DIR/compose.yaml" ps -q app)
@@ -143,7 +152,7 @@ git push -u origin feature/lab8-document
 ```
 
 Проверить diff: новая0002 и автоматизация, нет изменения0000/применённой0001.
-Переключить Settings root на feature/labs4-8-preparation. Успешный Verify feature,
+Переключить Settings root на feature/labs4-8-preparation. Успешный Verify и Acceptance feature,
 реальный review, merge DEV. Публикация runner+migrator по тому же SHA.
 Stage перед обновлением app выполняет:
 
@@ -245,3 +254,12 @@ cmp differs — читать diff before/rehearsal/reference, не игнори�
 Вопросы: schema dump vs migration; зачем NULL; почему целые копейки; что хранит
 Drizzle journal; почему одного размера .dump мало; почему нельзя DROP COLUMN для rollback;
 почему сравнение before может показывать разницу, а after обязано совпасть.
+
+## Инфраструктурная проверка перед защитой
+
+Server/build-agent — отдельный Linux CI; Acceptance и доставка — TEST-agent.
+При MIGRATION_MODE=manual автоматического применения0001 нет; только ручной
+manual-stage.sh после успешного TEST и до merge DEV. Во второй фазе0002 auto.
+Ни на STAGE, ни на PROD не запускается docker build; мигратор загружен готовым.
+Домашний сервер без подтверждённого маршрута не является уже работающим CI.
+Для screenshots указывать Agent и SHA отдельно у Verify, Acceptance, Publish, Stage.
