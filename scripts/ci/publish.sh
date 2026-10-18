@@ -2,6 +2,7 @@
 # Этот шаг имеет секреты и запускается только после проверок доверенных dev/prod.
 set -Eeuo pipefail
 : "${CI_BRANCH:?}" "${DOCKERHUB_USER:?}" "${DOCKERHUB_TOKEN:?}" "${IMAGE_REPO:?}"
+CI_BRANCH=${CI_BRANCH#refs/heads/}
 case "$CI_BRANCH" in dev|prod) ;; *) echo 'Публикация разрешена только dev/prod' >&2; exit 1;; esac
 [[ "$IMAGE_REPO" =~ ^[a-z0-9_-]+/[a-z0-9_-]+$ ]] || exit 1
 sha=$(git rev-parse HEAD)
