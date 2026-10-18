@@ -22,6 +22,8 @@ test("CI: сборки отделены от TEST и Windows localhost", () => {
     assert.match(publish, /snapshot\(Acceptance\)/);
     assert.doesNotMatch(read("compose.ci.yaml"), /^\s+build:/m);
     assert.doesNotMatch(read("scripts/ci/integration.sh"), /^[ \t]*(?:docker[ \t]+build\b|"\$\{ci\[@\]\}"[ \t]+build\b)/m);
+    // Compose run не поддерживает --no-build: у сервиса нет build, pull запрещён.
+    assert.doesNotMatch(read("scripts/ci/integration.sh"), /\brun\b[^\n]*--no-build/);
   }
   if (dsl.includes("object Prod :")) {
     assert.doesNotMatch(dsl.split("object Prod :")[1], /triggers\s*\{/);
