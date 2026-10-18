@@ -71,6 +71,8 @@ export const receiptSchema = z
       "Количество должно быть больше нуля",
     ),
     receivedOn: calendarDate,
+    // Необязательная цена обеспечивает совместимость API со старыми клиентами.
+    unitPriceKopecks: z.number().int().min(0).max(1000000000).nullable().default(null),
     note: z.string().trim().max(500, "Не более 500 символов").default(""),
   })
   .strict();

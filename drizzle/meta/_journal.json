@@ -8,6 +8,13 @@
       "when": 1792324779933,
       "tag": "0000_rainy_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792337776839,
+      "tag": "0001_receipt_price",
+      "breakpoints": true
     }
   ]
 }

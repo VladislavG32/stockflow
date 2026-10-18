@@ -22,6 +22,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY scripts/migrate.mjs ./scripts/migrate.mjs
 COPY drizzle ./drizzle
+COPY database/post-migrate ./database/post-migrate
 USER node
 CMD ["node", "scripts/migrate.mjs"]
 

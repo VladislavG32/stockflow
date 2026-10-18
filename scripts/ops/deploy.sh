@@ -17,6 +17,18 @@ previous=$(docker inspect "$app_id" --format '{{.Image}}')
 "${release[@]}" config --quiet
 docker pull "$APP_IMAGE"
 docker pull "$MIGRATOR_IMAGE"
+# Первая фаза ЛР8 требует уже выполненной ручной миграции. Вторая фаза
+# явно включается оператором в локальном target.env после защиты ручного этапа.
+case "${MIGRATION_MODE:?Set manual or auto}" in
+  manual)
+    [[ "$TARGET" != prod ]] || exit 1
+    bash scripts/db/export.sh /opt/stockflow-ci/state/manual-check
+    cmp reference/schema.sql /opt/stockflow-ci/state/manual-check/schema.sql
+    cmp reference/migrations.txt /opt/stockflow-ci/state/manual-check/migrations.txt
+    ;;
+  auto) echo 'Ручной этап: сначала выполните manual-stage.sh' >&2; exit 1 ;;
+  *) exit 1 ;;
+esac
 # При ошибке readiness возвращаем образ; БД не откатываем и не удаляем.
 changed=0
 rollback() {
@@ -31,8 +43,6 @@ trap rollback EXIT
 changed=1
 "${release[@]}" up -d --no-deps app
 bash "$root/scripts/ops/wait-ready.sh" "${release[@]}"
-printf '%s\n' "$previous" > /opt/stockflow-ci/state/previous-image.txt
-printf '%s\n' "$previous" > /opt/stockflow-ci/state/previous-image.txt
 printf '%s\n' "$previous" > /opt/stockflow-ci/state/previous-image.txt
 printf 'APP_IMAGE=%s\nMIGRATOR_IMAGE=%s\nRELEASE_SHA=%s\n' "$APP_IMAGE" "$MIGRATOR_IMAGE" "$release_sha" > /opt/stockflow-ci/state/current.env.tmp
 mv /opt/stockflow-ci/state/current.env.tmp /opt/stockflow-ci/state/current.env

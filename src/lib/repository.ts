@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { materials, receipts, suppliers } from "@/db/schema";
-import { replenishment } from "./inventory";
+import { replenishment, receiptCost } from "./inventory";
 import type { DashboardData } from "./types";
 import {
   limitsSchema,
@@ -45,6 +45,7 @@ export async function getDashboard(): Promise<DashboardData> {
           materialId: receipts.materialId,
           supplierId: receipts.supplierId,
           quantity: receipts.quantity,
+          unitPriceKopecks: receipts.unitPriceKopecks,
           receivedOn: receipts.receivedOn,
           note: receipts.note,
           materialName: materials.name,
@@ -65,7 +66,8 @@ export async function getDashboard(): Promise<DashboardData> {
           };
         }),
         suppliers: supplierRows,
-        receipts: receiptRows,
+        // Количество продолжает определять остаток; цена влияет только на стоимость.
+        receipts: receiptRows.map((row) => ({ ...row, totalKopecks: receiptCost(row.quantity, row.unitPriceKopecks) })),
       };
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },

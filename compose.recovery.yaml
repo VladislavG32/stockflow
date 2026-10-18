@@ -1,0 +1,6 @@
+# Применять вручную только ПОСЛЕ восстановления backup в НОВУЮ БД и её проверки.
+# Исходная stockflow сохраняется. Сервис migrate при восстановлении не запускается.
+services:
+  app:
+    environment:
+      DATABASE_URL: postgresql://stockflow:${POSTGRES_PASSWORD:?}@db:5432/${STOCKFLOW_RECOVERY_DB:?}

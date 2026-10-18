@@ -91,7 +91,11 @@ async function main() {
   });
   const first = `${code}-R1`;
   receiptNumbers.push(first);
-  await request("/api/receipts", makeReceipt(first, 5));
+  await request("/api/receipts", { ...makeReceipt(first, 5), unitPriceKopecks: 12345 });
+  const priced = await request("/api/dashboard", undefined, "GET", 200);
+  assert.equal(priced.receipts.find((r: { number: string }) => r.number === first).totalKopecks, 61725);
+  // Повтор номера не должен менять ни количество, ни цену исходной операции.
+  await request("/api/receipts", { ...makeReceipt(first, 5), unitPriceKopecks: 1 }, "POST", 409);
   assert.equal((await current()).recommended, 15);
   await request("/api/receipts", makeReceipt(first, 5), "POST", 409);
   await request("/api/receipts", makeReceipt(`${code}-BAD`, -1), "POST", 400);

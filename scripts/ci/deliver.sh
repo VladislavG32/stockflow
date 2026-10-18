@@ -14,6 +14,17 @@ for image in "$app" "$migrator"; do
 done
 remote="stockflow-$target"
 path="/opt/stockflow-ci/releases/$sha"
-ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "mkdir -p '$path'"
+if [[ "$target" == prod ]]; then
+  # PROD получает тот же SHA и digest, который уже прошёл STAGE.
+  [[ "$(git ls-remote https://github.com/VladislavG32/stockflow.git refs/heads/prod | cut -f1)" == "$sha" ]] || { echo 'prod должен указывать на проверенный SHA STAGE (fast-forward)' >&2; exit 1; }
+fi
+ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "mkdir -p '$path/reference'"
 git archive HEAD | ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "tar -xf - -C '$path'"
+scp -o BatchMode=yes -o StrictHostKeyChecking=yes reference/schema.sql reference/migrations.txt "$remote:$path/reference/"
 ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "cd '$path' && bash scripts/ops/deploy.sh '$target' '$app' '$migrator' '$sha'"
+if [[ "$target" == stage ]]; then
+  mkdir -p artifacts/stage-reference
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote" "cd '$path' && bash scripts/db/export.sh '$path/stage-reference'"
+  scp -o BatchMode=yes -o StrictHostKeyChecking=yes "$remote:$path/stage-reference/schema.sql" "$remote:$path/stage-reference/migrations.txt" artifacts/stage-reference/
+  cp incoming/release.env artifacts/release.env
+fi

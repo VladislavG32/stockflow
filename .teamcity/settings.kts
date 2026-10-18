@@ -27,7 +27,7 @@ object Verify : BuildType({
     vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
     steps { script { name = "Проверки и Docker build"; scriptContent = "bash scripts/ci/verify.sh" } }
     triggers { vcs { branchFilter = "+:*" } }
-    artifactRules = "artifacts/** => checks"
+    artifactRules = "artifacts/* => checks"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 object Publish : BuildType({
@@ -41,10 +41,13 @@ object Publish : BuildType({
         // Password-параметры env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN задаются
         // в UI ТОЛЬКО этой конфигурации: Verify не должен их наследовать.
     }
-    dependencies { snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL } }
+    dependencies {
+        snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Verify) { buildRule = sameChain(); artifactRules = "checks/schema.sql => reference\nchecks/migrations.txt => reference" }
+    }
     steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
     triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
-    artifactRules = "artifacts/release.env"
+    artifactRules = "artifacts/release.env\nreference/* => reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 
@@ -55,9 +58,10 @@ object Stage : BuildType({
     vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev" }
     dependencies {
         snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming" }
+        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming\nreference/* => reference" }
     }
     steps { script { name = "Обновление STAGE с сохранением БД"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
     triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev" } }
+    artifactRules = "artifacts/release.env\nartifacts/stage-reference/* => reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })

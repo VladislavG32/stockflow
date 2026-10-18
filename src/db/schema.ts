@@ -55,6 +55,9 @@ export const receipts = pgTable(
       .notNull()
       .references(() => suppliers.id, { onDelete: "restrict" }),
     quantity: integer("quantity").notNull(),
+    // Целые копейки исключают ошибки округления float. NULL сохраняет честный
+    // смысл старых поступлений: цена не была введена, это не бесплатная поставка.
+    unitPriceKopecks: integer("unit_price_kopecks"),
     receivedOn: varchar("received_on", { length: 10 }).notNull(),
     note: varchar("note", { length: 500 }).notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -66,6 +69,7 @@ export const receipts = pgTable(
       "receipts_positive_quantity",
       sql`${table.quantity} > 0 AND ${table.quantity} <= 1000000`,
     ),
+    check("receipts_price_range", sql`${table.unitPriceKopecks} IS NULL OR (${table.unitPriceKopecks} >= 0 AND ${table.unitPriceKopecks} <= 1000000000)`),
     index("receipts_material_idx").on(table.materialId),
     index("receipts_supplier_idx").on(table.supplierId),
   ],
