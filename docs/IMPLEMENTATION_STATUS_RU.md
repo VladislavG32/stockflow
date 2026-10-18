@@ -6,8 +6,28 @@ CI VM ещё не создана, домашняя сеть не провере�
 См. INFRA_AUDIT_RU, LINUX_CI_SETUP_RU и NEXT_STEPS_RU.
 
 Ниже сохранены результаты предыдущих локальных проверок приложения; они не являются
-результатами нового Linux pipeline. Новый аудит конфигураций фиксируется отдельной
-таблицей после выполнения проверок.
+результатами нового Linux pipeline. Новый аудит конфигураций приведён ниже.
+
+## Реально выполнено в дополнительном аудите
+
+| Проверка | Результат |
+|---|---|
+| npm ci / ESLint / TypeScript / production build | Успех на локальном Windows, без Docker runtime |
+| Unit итоговой версии |10 групп прошли |
+| Новые инфраструктурные тесты |3 прошли: разделение ролей, отказ corrupt bundle, запрет feature push |
+| Все5 ready-веток |Unit+infra+Bash syntax прошли; SQL-файлы остались по этапам |
+| Kotlin DSL |JDK21/Maven: все5 ready и итоговая конфигурация — BUILD SUCCESS |
+| XML graph |2/3/3/4/4/5 конфигураций, роли агентов, sameChain и отсутствие Prod trigger проверены |
+| Compose |Server, build-agent, TEST-agent, CI и release/recovery — config успешен |
+| Bash-инструкции / PowerShell-инструкции |27 Bash-блоков и PowerShell-блоки разобраны без синтаксических ошибок |
+| Совместимость CLI |Проверен help Compose run/up; неподдерживаемый run --no-build удалён |
+| PostgreSQL17.10 локально |HTTP integration и миграционные сценарии снова прошли, VM не использовались |
+| Gitleaks / Squawk / SQL policy |0 секретов;0 замечаний в6 SQL-файлах; policy прошла |
+| Git ancestry |Каждая старая ready-вершина — предок новой; dbae70f — предок итоговой |
+
+Фактических Linux Docker build/run/TeamCity/Hub/SSH-deploy на VM не было. Размеры
+RAM/диска — выбранные ограничения, а не измерения ваших VM. npm ci снова сообщил
+9 известных проблем dev-зависимостей; force-обновления не применялись.
 
 ## Предыдущая локальная проверка приложения
 
