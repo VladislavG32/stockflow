@@ -4,6 +4,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Инструменты существуют только в образе тестов, не попадают в production runner.
+FROM dependencies AS test-tools
+COPY . .
+CMD ["npm", "run", "test:integration"]
+
 FROM dependencies AS builder
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1

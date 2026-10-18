@@ -6,6 +6,12 @@ import pg from "pg";
 // Проверка через настоящий HTTP и PostgreSQL, без моков. Удаляет только созданные ею записи.
 // BASE_URL должен указывать на приложение, подключённое к той же DATABASE_URL.
 const baseUrl = process.env.BASE_URL ?? "http://127.0.0.1:3000";
+// Допуск только к специально названной одноразовой БД. Проверка ДО любых запросов.
+// На рабочих TEST/STAGE/PROD этот сценарий запускать нельзя, даже для QA-записей.
+if (!process.env.DATABASE_URL || process.env.STOCKFLOW_TEST_DATABASE !== "stockflow_ci" ||
+    new URL(process.env.DATABASE_URL).pathname !== "/stockflow_ci") {
+  throw new Error("Разрешена только отдельная stockflow_ci с STOCKFLOW_TEST_DATABASE=stockflow_ci");
+}
 const code = `QA-${randomUUID().slice(0, 12).toUpperCase()}`;
 const supplierName = `${code}-Поставщик`;
 const receiptNumbers: string[] = [];

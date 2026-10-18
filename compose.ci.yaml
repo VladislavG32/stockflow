@@ -1,0 +1,57 @@
+# Только одноразовые тесты. Никогда не объединять с compose.yaml рабочего стенда.
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: stockflow
+      POSTGRES_DB: stockflow_ci
+      POSTGRES_HOST_AUTH_METHOD: trust
+    # Пароль не нужен: сеть internal, порты не публикуются, диск временный.
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks: [isolated]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U stockflow -d stockflow_ci"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
+    networks: [isolated]
+    depends_on:
+      db:
+        condition: service_healthy
+  app:
+    image: ${CI_IMAGE:-stockflow-ci:local}
+    environment:
+      DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
+    networks: [isolated]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+  tests:
+    image: stockflow-ci-tests:local
+    build:
+      context: .
+      target: test-tools
+    environment:
+      DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
+      BASE_URL: http://app:3000
+      STOCKFLOW_TEST_DATABASE: stockflow_ci
+    command: [npm, run, "test:integration"]
+    networks: [isolated]
+    depends_on:
+      app:
+        condition: service_healthy
+networks:
+  isolated:
+    internal: true

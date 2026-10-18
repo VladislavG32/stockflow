@@ -33,6 +33,7 @@ changed=1
 bash "$root/scripts/ops/wait-ready.sh" "${release[@]}"
 printf '%s\n' "$previous" > /opt/stockflow-ci/state/previous-image.txt
 printf '%s\n' "$previous" > /opt/stockflow-ci/state/previous-image.txt
+printf '%s\n' "$previous" > /opt/stockflow-ci/state/previous-image.txt
 printf 'APP_IMAGE=%s\nMIGRATOR_IMAGE=%s\nRELEASE_SHA=%s\n' "$APP_IMAGE" "$MIGRATOR_IMAGE" "$release_sha" > /opt/stockflow-ci/state/current.env.tmp
 mv /opt/stockflow-ci/state/current.env.tmp /opt/stockflow-ci/state/current.env
 echo "Готово: $TARGET $release_sha"
