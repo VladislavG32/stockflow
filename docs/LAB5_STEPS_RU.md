@@ -8,39 +8,26 @@
 Подготовлены compose.agent, SSH-скрипты, release override и фильтр «Нулевой остаток».
 Контрольная ветка `codex/lab5-ready`; схема всё ещё ЛР3.
 
-## 1 Агент и защищённый канал
+## 1 Агент TEST и прямая связь с CI Linux
 
-На TEST (SSH, замените ubuntu своим пользователем):
+Выполнить раздел4 LINUX_CI_SETUP_RU.md на TEST: private env, curl к CI из хоста
+и из контейнера, запуск compose.agent.yaml, Authorize stockflow-test-agent.
+Сборочный stockflow-build-agent уже работает на отдельной CI; его оставляем там.
+Windows не держит обратный туннель. SERVER_URL=http://192.168.56.14:8111 — пример
+проверенного Host-Only адреса CI, не localhost контейнера.
+
+На TEST для повторной проверки (checkout конфигурации):
 
 ```bash
-free -h
-df -h /
-sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci/ssh
-sudo mkdir -p /opt/buildagent/{work,temp,system,tools,plugins}
-cd ~/stockflow
-git fetch origin
-docker compose -f infra/teamcity/compose.agent.yaml pull
-docker compose -f infra/teamcity/compose.agent.yaml up -d
-docker compose -f infra/teamcity/compose.agent.yaml logs --tail 60 agent
+cd ~/stockflow-ci-config
+curl --fail --connect-timeout 5 http://192.168.56.14:8111/login.html
+docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.agent.yaml ps
+docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.agent.yaml exec -T agent docker compose version
+docker stats --no-stream
 ```
 
-Если в старом каталоге ЛР3 нет новых infra-файлов: не переключать работающий исходник,
-а клонировать подготовку отдельно: `git clone -b codex/lab5-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config`;
-затем `cd ~/stockflow-ci-config` и выполнить compose команды оттуда.
-
-Windows PowerShell, отдельное окно держать открытым весь сеанс CI:
-
-```powershell
-ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -R 127.0.0.1:18111:127.0.0.1:8111 ubuntu@192.168.56.11
-```
-
-Этот обратный туннель переносит порт Windows localhost:8111 на TEST localhost:18111.
-В агенте Linux network_mode:host, SERVER_URL http://127.0.0.1:18111. Открывать Windows
-firewall 8111 для всей сети не требуется. На TEST: `curl -I http://127.0.0.1:18111`.
-В TeamCity Agents → Unauthorized проверить имя, затем Authorize. Не придумывать
-токен агента: сервер сам сохранит авторизацию в agent_conf. Для восстановления
-туннеля повторить SSH-команду; не удалять том агента.
-Скриншот: connected/authorized agent, его имя, docker stats.
+Скриншот: connected TEST-agent и отдельный build-agent. На защите: «TEST получает
+задачу доставки через Server, готовый образ берёт из Hub; компиляция выполняется на CI».
 
 ## 2 Подготовить STAGE без смены БД
 
@@ -97,7 +84,7 @@ ssh-keygen -lf /opt/stockflow-ci/ssh/known_hosts.candidate
 ```bash
 mv /opt/stockflow-ci/ssh/known_hosts.candidate /opt/stockflow-ci/ssh/known_hosts
 chmod 600 /opt/stockflow-ci/ssh/{config,id_ed25519,known_hosts}
-docker compose -f infra/teamcity/compose.agent.yaml exec -T agent ssh -o BatchMode=yes stockflow-stage hostname
+docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.agent.yaml exec -T agent ssh -o BatchMode=yes stockflow-stage hostname
 ```
 
 Результат stockflow-stage. Не добавлять PROD ключ/доступ раньше ЛР8. Не копировать
@@ -162,7 +149,7 @@ Permission denied — проверить ssh config User, authorized_keys и chm
 
 ## Вопросы и защита на 5–7 минут
 
-1 минута — отличие CI от доставки. 1 — агент TEST и SSH-туннель.
+1 минута — отличие CI от доставки. 1 — два агента Linux и прямая private-связь.
 2 — feature diff, реальный PR и approval. 1–2 — DEV build, digest, Stage и фильтр.
 1 — сохранность записи и механизм rollback. Вопросы: почему --no-deps;
 почему PostgreSQL не хранится в образе; почему согласование нельзя имитировать;
