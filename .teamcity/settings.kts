@@ -4,8 +4,8 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import jetbrains.buildServer.configs.kotlin.triggers.finishBuildTrigger
 import jetbrains.buildServer.configs.kotlin.vcs.GitVcsRoot
 
-// Классические Build Configuration работают в бесплатной On-Premises редакции.
-// Настройки читаются из доверенной ветки подготовки, не из произвольного PR.
+// Server и тяжёлый build-agent находятся на отдельном Linux CI-хосте.
+// TEST имеет только агент готовых контейнеров/доставки; Windows — SSH/Git/браузер.
 version = "2026.2"
 project {
     vcsRoot(Source)
@@ -17,17 +17,16 @@ object Source : GitVcsRoot({
     url = "https://github.com/VladislavG32/stockflow.git"
     branch = "refs/heads/dev"
     branchSpec = "+:refs/heads/(*)"
-    // Публичному репозиторию не нужен GitHub PAT для чтения.
 })
 object Verify : BuildType({
     id("StockFlow_Verify")
     name = "01 Verify all branches"
     maxRunningBuilds = 1
     vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
-    steps { script { name = "Проверки и Docker build"; scriptContent = "bash scripts/ci/verify.sh" } }
+    steps { script { name = "Linux CI: анализ, unit, build и архив образов"; scriptContent = "bash scripts/ci/verify.sh" } }
     triggers { vcs { branchFilter = "+:*" } }
-    artifactRules = "artifacts/** => checks"
-    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+    artifactRules = "artifacts/* => checks"
+    requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
 })
 object Publish : BuildType({
     id("StockFlow_Publish")
@@ -37,12 +36,15 @@ object Publish : BuildType({
     params {
         param("env.CI_BRANCH", "%teamcity.build.vcs.branch.${DslContext.projectId.value}_Source%")
         param("env.IMAGE_REPO", "SET_DOCKERHUB_USER/stockflow")
-        // Password-параметры env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN задаются
-        // в UI ТОЛЬКО этой конфигурации: Verify не должен их наследовать.
+        // Только здесь задать Password env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN
+        // через UI/credentialsJSON. Не наследовать секреты в Verify/Acceptance.
     }
-    dependencies { snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL } }
-    steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
+    dependencies {
+        snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/ci-images.* => incoming" }
+    }
+    steps { script { name = "Linux CI: push проверенных образов без rebuild"; scriptContent = "bash scripts/ci/publish.sh" } }
     triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:<default>\n+:prod" } }
     artifactRules = "artifacts/release.env"
-    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+    requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
 })

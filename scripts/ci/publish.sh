@@ -7,6 +7,13 @@ case "$CI_BRANCH" in dev|prod) ;; *) echo 'Публикация разрешен
 [[ "$IMAGE_REPO" =~ ^[a-z0-9_-]+/[a-z0-9_-]+$ ]] || exit 1
 sha=$(git rev-parse HEAD)
 tag="$CI_BRANCH-$sha"
+bash scripts/ci/preflight.sh build
+bash scripts/ci/load-bundle.sh incoming
+# Только тегируем образы из успешной Verify/Acceptance; повторной сборки нет.
+for target in runner migrator; do
+  suffix=''; [[ "$target" != migrator ]] || suffix='-migrator'
+  docker tag "stockflow-ci-$target:$sha" "$IMAGE_REPO:$tag$suffix"
+done
 # Временный config удаляется даже при ошибке; токен не попадает в командную строку.
 export DOCKER_CONFIG
 DOCKER_CONFIG=$(mktemp -d)
@@ -14,7 +21,6 @@ trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
 printf '%s' "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
 for target in runner migrator; do
   suffix=''; [[ "$target" != migrator ]] || suffix='-migrator'
-  docker build --target "$target" --label "org.opencontainers.image.revision=$sha" -t "$IMAGE_REPO:$tag$suffix" .
   docker push "$IMAGE_REPO:$tag$suffix"
   docker pull "$IMAGE_REPO:$tag$suffix"
   digest=$(docker image inspect "$IMAGE_REPO:$tag$suffix" --format '{{index .RepoDigests 0}}')

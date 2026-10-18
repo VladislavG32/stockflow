@@ -12,7 +12,8 @@
     "test:integration": "tsx scripts/integration.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "test:infra": "node --test tests/ci-infra.test.mjs"
   },
   "dependencies": {
     "dotenv": "^18.0.8",
