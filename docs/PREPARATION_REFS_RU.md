@@ -5,12 +5,12 @@
 
 | Ветка | Проверяемый commit на момент реестра |
 |---|---|
-| codex/lab4-ready | `b0b4fb997d88366af93d3746fe78ffb3cd388d12` |
-| codex/lab5-ready | `7a1bb8651ad1ad731ccfccc3ef14c336d29b65a6` |
-| codex/lab6-ready | `2e15945aa92834462e05fdb86128403236d00481` |
-| codex/lab7-ready | `38b78ff6c8d92969cd9f661cf09ab1ff66483d82` |
-| codex/lab8-manual-ready | `43c54eea8a2cbab7e040db17ba8adb656827fe8b` |
-| feature/labs4-8-preparation | `c41a79d2d52d0b206c0d44084c2286147d7c001a` |
+| codex/lab4-ready | `b742e5aa1c9708b5925f6b5c13c7edf71c47aa8f` |
+| codex/lab5-ready | `b25df84931dd74bfffa9924ba15a28406784480c` |
+| codex/lab6-ready | `b9a4c118bd3cc3fffa26050a5ccb2bf108c581c3` |
+| codex/lab7-ready | `946576365cdd01c607e9fa7f40441aa0be7df620` |
+| codex/lab8-manual-ready | `fc87d16e981f0af33bac7f72a7378ee64bd5d380` |
+| feature/labs4-8-preparation | `72c515e559f09fe0ddd2b1ec6f9df3c7b35065f6` |
 
 Итоговая ветка после этого реестра может содержать дополнительные коммиты документации.
 Актуальный указатель всегда проверяется `git rev-parse feature/labs4-8-preparation`.
@@ -33,11 +33,11 @@ fdb6960 feat(lab7): prepare separately demonstrable stage without future migrati
 1e69b56 docs(labs4-8): add Russian walkthroughs, defense map and honest verification status
 7d31e33 fix(ci): preserve failing exit codes before production build
 a475964 merge: connect sequential lab checkpoints with final automated migration stage
-b0b4fb9 fix(ci): preserve default DEV routing and remove repeated state writes
 b4593d4 Merge branch 'codex/lab4-ready' into codex/lab5-ready
 d13ae92 fix(lab8): normalize default branch filters and immutable artifact inputs
-7a1bb86 fix(ci): preserve default DEV routing and remove repeated state writes
+b0b4fb9 fix(ci): preserve default DEV routing and remove repeated state writes
 d80df08 Merge branch 'codex/lab5-ready' into codex/lab6-ready
+7a1bb86 fix(ci): preserve default DEV routing and remove repeated state writes
 2e15945 fix(ci): preserve default DEV routing and remove repeated state writes
 38b78ff Merge branch 'codex/lab6-ready' into codex/lab7-ready
 0e40a2b fix(teamcity): route default DEV safely and use full trigger configuration IDs
@@ -45,10 +45,37 @@ d80df08 Merge branch 'codex/lab5-ready' into codex/lab6-ready
 a0164ef Merge branch 'codex/lab7-ready' into codex/lab8-manual-ready
 5b868e2 Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
 1411d97 test(labs4-8): verify published candidates, migration drift and staged defense workflows
-43c54ee fix(lab8): preserve schema export checksums with LF line endings
 c41a79d Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
+43c54ee fix(lab8): preserve schema export checksums with LF line endings
+dbae70f docs: record final staged branch references and verification commits
+deab69c fix(ci): move TeamCity builds to dedicated Linux and test immutable bundles on TEST
+96b525e fix(teamcity): use explicit private server URL for DSL plugin resolution
+769867d fix(lab4): use Linux CI builder and preserve staged TEST responsibilities
+bd17454 fix(lab5): use Linux CI builder and preserve staged TEST responsibilities
+027633a fix(lab6): use Linux CI builder and preserve staged TEST responsibilities
+3e94d90 fix(lab7): use Linux CI builder and preserve staged TEST responsibilities
+27c2ca4 fix(lab8): use Linux CI builder and preserve staged TEST responsibilities
+f7545b2 merge: propagate Linux infrastructure fixes through all laboratory checkpoints
+a022cc9 fix(compose): run prebuilt acceptance images with supported no-pull options
+f8916bc fix(lab7): use supported Compose run flags for prebuilt test images
+8ebbc5e Merge branch 'codex/lab7-ready' into codex/lab8-manual-ready
+13fd783 Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
+4334b2b docs(ci): record verified Linux audit and clarify host memory budget
+b742e5a docs(lab4): clarify Linux setup and preserve actual audit evidence
+b25df84 Merge branch 'codex/lab4-ready' into codex/lab5-ready
+b9a4c11 Merge branch 'codex/lab5-ready' into codex/lab6-ready
+9465763 Merge branch 'codex/lab6-ready' into codex/lab7-ready
+fc87d16 Merge branch 'codex/lab7-ready' into codex/lab8-manual-ready
+72c515e Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
 ```
 
 Ни одного изменения исходного коммита ЛР3 нет. Первоначальные SQL0000 и отчёты ЛР3
 сохранены. У каждой готовой ветки ЛР4–7 только0000; у ручной ЛР8 —0000/0001.
 Финальная версия добавляет0002. Переходы оформлены обычными коммитами/merge, без rebase/force.
+
+## Дополнительный аудит Linux
+
+Исправления после dbae70f: Linux CI вместо Windows runtime, отдельный build-agent,
+Acceptance на TEST без сборки, tar/checksum вместо rebuild, private URL, resource gates.
+Каждый прежний ready commit сохранён в истории. Push не выполнялся. Сначала прочитать
+BRANCH_UPDATE_RU.md и NEXT_STEPS_RU.md; dev/prod обновлять только текущим этапом ЛР4.
