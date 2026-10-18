@@ -243,3 +243,18 @@ CI60ГБ нужны для TeamCity artifacts, Docker layers и BuildKit cache. 
 После просмотра `docker image ls` можно удалить ТОЛЬКО конкретные старые CI-теги,
 которые не используются контейнерами; рабочие образы и backup сохранять.
 Повреждённый архив/нехватка RAM/503 → сборка красная, Publish/Stage не продолжаются.
+
+## Проверка Kotlin DSL без установки Maven на Windows
+
+На CI Linux из clone выбранной ready-ветки (после Server startup):
+
+```bash
+set -a
+source /opt/stockflow-ci/teamcity.env
+set +a
+docker run --rm --memory=1600m -e TEAMCITY_SERVER_URL -e MAVEN_OPTS=-Xmx1g -v "$PWD:$PWD" -w "$PWD" maven:3.9.11-eclipse-temurin-21 mvn -f .teamcity/pom.xml -U teamcity-configs:generate
+```
+
+POM берёт plugin repository из TEAMCITY_SERVER_URL, не из Windows localhost.
+Ожидается BUILD SUCCESS и .teamcity/target/generated-configs. Это проверка DSL,
+не выполнение приложения. При ошибке URL сначала curl из контейнера и версия JDK21.

@@ -8,6 +8,7 @@ services:
     ports:
       - "${TEAMCITY_BIND_ADDRESS:?Set private Linux bind address}:8111:8111"
     environment:
+      TEAMCITY_SERVER_URL: ${TEAMCITY_SERVER_URL:?Set private server URL}
       TEAMCITY_SERVER_MEM_OPTS: -Xms512m -Xmx1536m
     mem_limit: 2300m
     volumes:
