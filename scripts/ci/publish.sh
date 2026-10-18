@@ -7,13 +7,13 @@ case "$CI_BRANCH" in dev|prod) ;; *) echo 'Публикация разрешен
 [[ "$IMAGE_REPO" =~ ^[a-z0-9_-]+/[a-z0-9_-]+$ ]] || exit 1
 sha=$(git rev-parse HEAD)
 tag="$CI_BRANCH-$sha"
+bash scripts/ci/preflight.sh build
+bash scripts/ci/load-bundle.sh incoming
+# Только тегируем образы из успешной Verify/Acceptance; повторной сборки нет.
 for target in runner migrator; do
   suffix=''; [[ "$target" != migrator ]] || suffix='-migrator'
-  docker build --target "$target" --label "org.opencontainers.image.revision=$sha" -t "$IMAGE_REPO:$tag$suffix" .
+  docker tag "stockflow-ci-$target:$sha" "$IMAGE_REPO:$tag$suffix"
 done
-# Verify проверил исходный SHA, но повторная сборка может дать другой Build ID Next.
-# Поэтому перед push проверяем ИМЕННО публикуемые образы, а не только их исходники.
-CI_IMAGE="$IMAGE_REPO:$tag" CI_MIGRATOR_IMAGE="$IMAGE_REPO:$tag-migrator" bash scripts/ci/integration.sh
 # Временный config удаляется даже при ошибке; токен не попадает в командную строку.
 export DOCKER_CONFIG
 DOCKER_CONFIG=$(mktemp -d)

@@ -2,13 +2,15 @@
 services:
   db:
     image: postgres:17-bookworm
+    mem_limit: 384m
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=30]
     environment:
       POSTGRES_USER: stockflow
       POSTGRES_DB: stockflow_ci
       POSTGRES_HOST_AUTH_METHOD: trust
     # Пароль не нужен: сеть internal, порты не публикуются, диск временный.
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql/data:size=256m
     networks: [isolated]
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U stockflow -d stockflow_ci"]
@@ -17,10 +19,8 @@ services:
       retries: 30
   migrate:
     # Publish передаёт уже собранный образ: проверяем ровно то, что затем push.
-    image: ${CI_MIGRATOR_IMAGE:-stockflow-ci-migrator:local}
-    build:
-      context: .
-      target: migrator
+    image: ${CI_MIGRATOR_IMAGE:?Set tested migrator image}
+    mem_limit: 256m
     environment:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
     networks: [isolated]
@@ -28,7 +28,8 @@ services:
       db:
         condition: service_healthy
   app:
-    image: ${CI_IMAGE:-stockflow-ci:local}
+    image: ${CI_IMAGE:?Set tested runner image}
+    mem_limit: 512m
     environment:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
     networks: [isolated]
@@ -41,10 +42,8 @@ services:
       retries: 30
       start_period: 10s
   tests:
-    image: stockflow-ci-tests:local
-    build:
-      context: .
-      target: test-tools
+    image: ${CI_TEST_IMAGE:?Set prebuilt test tools image}
+    mem_limit: 512m
     environment:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
       BASE_URL: http://app:3000

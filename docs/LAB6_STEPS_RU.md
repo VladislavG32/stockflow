@@ -31,21 +31,14 @@ Gitleaks `--redact` скрывает значения в JSON/логе, но с�
 
 ## Реальное выполнение
 
-На Windows (исходник выбранной ветки):
-
-```powershell
-Set-Location D:\StockFlow
-npm ci
-npm run lint
-npm run typecheck
-```
-
-На TEST в отдельном CI-checkout, не в рабочем каталоге приложения:
+На CI Linux по SSH, отдельный clone конфигурации соответствующей ветки:
 
 ```bash
 cd ~/stockflow-ci-config
 git fetch origin
 git switch --detach origin/codex/lab6-ready
+bash scripts/ci/preflight.sh build
+docker run --rm --memory=2300m -v "$PWD:$PWD" -w "$PWD" node:24-bookworm-slim bash -ec 'npm ci; npm run lint; npm run typecheck'
 bash scripts/ci/static.sh
 bash scripts/demo/secret.sh
 ```
@@ -58,7 +51,8 @@ bash scripts/demo/secret.sh
 Не добавлять настоящий Docker Hub/GitHub token ради скриншота.
 
 В TeamCity перевести Settings root на codex/lab6-ready; вносить код через feature/PR
-из ЛР5. Verify запускает static.sh, затем npm lint/typecheck/tests/build. Успешный
+из ЛР5. Verify на stockflow-build-agent запускает static.sh, npm lint/typecheck/tests/build
+и архивирует образы. TEST-agent выполняет только доставку Stage. Успешный
 DEV продолжает Publish/Stage; при любой ошибке зависимые конфигурации не стартуют.
 Скриншоты: правила eslint.config.mjs и .gitleaks.toml, реальный лог без секретов,
 artifacts/gitleaks.json, Build chain с запрещённым продолжением после ошибки.
@@ -123,3 +117,6 @@ git push origin prod
 ЛР3 не содержат новой инфраструктуры; их старый код не переписываем и не выдаём
 неподдерживаемую сборку за успешную. При расхождении истории ff-only остановится:
 разрешите историю обычным PR/merge, не force/reset.
+
+Инфраструктура: Linux CI из LINUX_CI_SETUP_RU.md; Windows только Git/SSH/браузер.
+Скриншот номера агента в build доказывает, где выполнялся анализ.

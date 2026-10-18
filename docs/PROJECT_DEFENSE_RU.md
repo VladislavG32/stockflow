@@ -62,14 +62,14 @@
 | compose.release.yaml | Образы по digest; app без автоматической миграции; прежний проект/volume |
 | compose.ci.yaml | Одноразовая stockflow_ci, tmpfs, internal network, без published DB ports |
 | compose.recovery.yaml | Только ручное переключение app на заранее восстановленную новую БД |
-| infra/teamcity | Server на Windows, Agent на TEST, пример SSH config без private key |
-| .teamcity/settings.kts | Verify→Publish→Stage→Prod, sameChain, ветки и fail gates; Prod без trigger |
+| infra/teamcity | Server/build-agent на CI Linux, TEST-agent для приёмки/SSH; private env вне Git |
+| .teamcity/settings.kts | Verify(CI)→Acceptance(TEST)→Publish(CI)→Stage/Prod(TEST), sameChain, ветки и fail gates; Prod без trigger |
 | .teamcity/pom.xml | Реальная генерация TeamCity XML, JDK21+, server plugin repository |
 | scripts/ci/verify.sh | Последовательность проверок всех веток, первый failure останавливает всё |
 | scripts/ci/static.sh | Gitleaks Git history, redact, JSON |
 | scripts/ci/sql.sh | Squawk плюс локальная policy, отчёт и ненулевой exit |
 | scripts/ci/integration.sh | Цикл отдельной PostgreSQL, HTTP-тесты, persistence, отказ БД, cleanup |
-| scripts/ci/publish.sh | Только dev/prod, password-stdin, полный SHA, app+migrator digests |
+| scripts/ci/publish.sh | Только dev/prod, load того же bundle без rebuild, password-stdin и digests |
 | scripts/ci/deliver.sh | Валидирует release.env без source; SSH/scp release, PROD SHA gate |
 | scripts/ops/common.sh | Проверяет действующий db и точный volume из локального target.env |
 | scripts/ops/deploy.sh | flock, pull, ручная/auto миграция, app-only update, readiness, rollback |
@@ -120,3 +120,12 @@ idempotency для любых разных номеров.
 
 Показывайте код в порядке «действие пользователя → API → validation → repository →
 PostgreSQL → тест → CI». Тогда объяснение связано с задачей склада, а не с заученными терминами.
+
+## Объяснение исправленной инфраструктуры
+
+Windows — клиент управления. Отдельная новая CI Linux VM8ГБ собирает; TEST4ГБ
+проверяет уже собранные образы и доставляет. HTTP8111 доступен в Host-Only/VPN,
+SSH22 связывает TEST с целевыми стендами. Нет зависимости от Windows Docker.
+preflight.sh запрещает запуск при недостатке RAM/диска. bundle/load-bundle переносят
+образ по checksum и полному SHA; Acceptance получает настоящий PostgreSQL на TEST.
+Процесс создания CI описан в LINUX_CI_SETUP_RU; VM/домашняя сеть ещё требуют настройки.

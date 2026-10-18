@@ -6,6 +6,11 @@ source scripts/ops/common.sh
 umask 077
 out=${1:?backup directory}
 mkdir -p "$out"
+# На 25-ГБ диске проверяем запас для архива и двух последовательных restore-копий.
+size=$(pgcmd psql -X -U stockflow -d stockflow -At -c "select pg_database_size('stockflow')")
+[[ "$size" =~ ^[0-9]+$ ]] || exit 1
+free=$(df -Pm "$out" | awk 'NR==2 {print $4}')
+(( free > (size * 3 / 1048576 + 512) )) || { echo 'Недостаточно места для проверенного backup' >&2; exit 1; }
 file="$out/stockflow-$(date -u +%Y%m%dT%H%M%SZ)-$$.dump"
 pgcmd pg_dump -U stockflow -d stockflow -Fc > "$file"
 test -s "$file"

@@ -4,12 +4,13 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import jetbrains.buildServer.configs.kotlin.triggers.finishBuildTrigger
 import jetbrains.buildServer.configs.kotlin.vcs.GitVcsRoot
 
-// Классические Build Configuration работают в бесплатной On-Premises редакции.
-// Настройки читаются из доверенной ветки подготовки, не из произвольного PR.
+// Server и тяжёлый build-agent находятся на отдельном Linux CI-хосте.
+// TEST имеет только агент готовых контейнеров/доставки; Windows — SSH/Git/браузер.
 version = "2026.2"
 project {
     vcsRoot(Source)
     buildType(Verify)
+    buildType(Acceptance)
     buildType(Publish)
     buildType(Stage)
     buildType(Prod)
@@ -19,15 +20,29 @@ object Source : GitVcsRoot({
     url = "https://github.com/VladislavG32/stockflow.git"
     branch = "refs/heads/dev"
     branchSpec = "+:refs/heads/(*)"
-    // Публичному репозиторию не нужен GitHub PAT для чтения.
 })
 object Verify : BuildType({
     id("StockFlow_Verify")
     name = "01 Verify all branches"
     maxRunningBuilds = 1
     vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
-    steps { script { name = "Проверки и Docker build"; scriptContent = "bash scripts/ci/verify.sh" } }
+    steps { script { name = "Linux CI: анализ, unit, build и архив образов"; scriptContent = "bash scripts/ci/verify.sh" } }
     triggers { vcs { branchFilter = "+:*" } }
+    artifactRules = "artifacts/* => checks"
+    requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
+})
+// Строгая sameChain переносит именно собранные образы. На TEST нет docker build/npm ci.
+object Acceptance : BuildType({
+    id("StockFlow_Acceptance")
+    name = "01b Acceptance PostgreSQL on TEST"
+    maxRunningBuilds = 1
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
+    dependencies {
+        snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/ci-images.* => incoming" }
+    }
+    steps { script { name = "TEST: загрузить образы и проверить HTTP/PostgreSQL"; scriptContent = "bash scripts/ci/acceptance.sh" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:*" } }
     artifactRules = "artifacts/* => checks"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
@@ -39,19 +54,19 @@ object Publish : BuildType({
     params {
         param("env.CI_BRANCH", "%teamcity.build.vcs.branch.${DslContext.projectId.value}_Source%")
         param("env.IMAGE_REPO", "SET_DOCKERHUB_USER/stockflow")
-        // Password-параметры env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN задаются
-        // в UI ТОЛЬКО этой конфигурации: Verify не должен их наследовать.
+        // Только здесь задать Password env.DOCKERHUB_USER и env.DOCKERHUB_TOKEN
+        // через UI/credentialsJSON. Не наследовать секреты в Verify/Acceptance.
     }
     dependencies {
-        snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/schema.sql => reference\nchecks/migrations.txt => reference" }
+        snapshot(Acceptance) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/ci-images.* => incoming" }
+        artifacts(Acceptance) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/schema.sql => reference\nchecks/migrations.txt => reference" }
     }
-    steps { script { name = "Публикация по полному SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
-    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:<default>\n+:prod" } }
+    steps { script { name = "Linux CI: push проверенных образов без rebuild"; scriptContent = "bash scripts/ci/publish.sh" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Acceptance"; successfulOnly = true; branchFilter = "+:dev\n+:<default>\n+:prod" } }
     artifactRules = "artifacts/release.env\nreference/* => reference"
-    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+    requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
 })
-
 object Stage : BuildType({
     id("StockFlow_Stage")
     name = "03 Deploy STAGE from DEV"
@@ -61,7 +76,7 @@ object Stage : BuildType({
         snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
         artifacts(Publish) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming\nreference/* => reference" }
     }
-    steps { script { name = "Обновление STAGE с сохранением БД"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
+    steps { script { name = "TEST: SSH-доставка на STAGE"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
     triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev\n+:<default>" } }
     artifactRules = "artifacts/release.env\nartifacts/stage-reference/* => reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
@@ -75,7 +90,7 @@ object Prod : BuildType({
         snapshot(Stage) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
         artifacts(Stage) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming\nreference/* => reference" }
     }
-    // НЕТ триггера. Run запускает человек после сверки prod SHA и успешного STAGE.
-    steps { script { name = "Backup, проверка схемы и доставка PROD"; scriptContent = "bash scripts/ci/deliver.sh prod" } }
+    // Только ручной Promote успешной STAGE-сборки; триггер намеренно отсутствует.
+    steps { script { name = "TEST: backup/rehearsal и доставка PROD"; scriptContent = "bash scripts/ci/deliver.sh prod" } }
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
