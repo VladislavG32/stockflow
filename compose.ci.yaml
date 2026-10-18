@@ -20,6 +20,7 @@ services:
   migrate:
     # Publish передаёт уже собранный образ: проверяем ровно то, что затем push.
     image: ${CI_MIGRATOR_IMAGE:?Set tested migrator image}
+    pull_policy: never
     mem_limit: 256m
     environment:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
@@ -29,6 +30,7 @@ services:
         condition: service_healthy
   app:
     image: ${CI_IMAGE:?Set tested runner image}
+    pull_policy: never
     mem_limit: 512m
     environment:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
@@ -43,6 +45,7 @@ services:
       start_period: 10s
   tests:
     image: ${CI_TEST_IMAGE:?Set prebuilt test tools image}
+    pull_policy: never
     mem_limit: 512m
     environment:
       DATABASE_URL: postgresql://stockflow@db:5432/stockflow_ci
