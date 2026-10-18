@@ -52,12 +52,12 @@ object Stage : BuildType({
     id("StockFlow_Stage")
     name = "03 Deploy STAGE from DEV"
     maxRunningBuilds = 1
-    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev" }
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:<default>" }
     dependencies {
         snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming" }
+        artifacts(Publish) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming" }
     }
     steps { script { name = "Обновление STAGE с сохранением БД"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
-    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev" } }
+    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev\n+:<default>" } }
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
