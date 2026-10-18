@@ -9,8 +9,8 @@
 | codex/lab5-ready | `7a1bb8651ad1ad731ccfccc3ef14c336d29b65a6` |
 | codex/lab6-ready | `2e15945aa92834462e05fdb86128403236d00481` |
 | codex/lab7-ready | `38b78ff6c8d92969cd9f661cf09ab1ff66483d82` |
-| codex/lab8-manual-ready | `a0164ef02050ad87b3ed2f54e474613d2dfdde62` |
-| feature/labs4-8-preparation | `5b868e236b32590efa011f1365acfdee6b182315` |
+| codex/lab8-manual-ready | `43c54eea8a2cbab7e040db17ba8adb656827fe8b` |
+| feature/labs4-8-preparation | `c41a79d2d52d0b206c0d44084c2286147d7c001a` |
 
 Итоговая ветка после этого реестра может содержать дополнительные коммиты документации.
 Актуальный указатель всегда проверяется `git rev-parse feature/labs4-8-preparation`.
@@ -44,6 +44,9 @@ d80df08 Merge branch 'codex/lab5-ready' into codex/lab6-ready
 5fe8b38 Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
 a0164ef Merge branch 'codex/lab7-ready' into codex/lab8-manual-ready
 5b868e2 Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
+1411d97 test(labs4-8): verify published candidates, migration drift and staged defense workflows
+43c54ee fix(lab8): preserve schema export checksums with LF line endings
+c41a79d Merge branch 'codex/lab8-manual-ready' into feature/labs4-8-preparation
 ```
 
 Ни одного изменения исходного коммита ЛР3 нет. Первоначальные SQL0000 и отчёты ЛР3
