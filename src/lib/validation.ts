@@ -73,6 +73,7 @@ export const receiptSchema = z
     receivedOn: calendarDate,
     // Необязательная цена обеспечивает совместимость API со старыми клиентами.
     unitPriceKopecks: z.number().int().min(0).max(1000000000).nullable().default(null),
+    documentReference: z.string().trim().max(120).nullable().default(null),
     note: z.string().trim().max(500, "Не более 500 символов").default(""),
   })
   .strict();

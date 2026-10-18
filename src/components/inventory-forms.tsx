@@ -122,6 +122,12 @@ export function InventoryForms({
                     maxLength: 500,
                     optional: true,
                   },
+                  {
+                    name: "documentReference",
+                    label: "Номер накладной (необязательно)",
+                    maxLength: 120,
+                    optional: true,
+                  },
                 ]}
                 onSaved={onSaved}
               />

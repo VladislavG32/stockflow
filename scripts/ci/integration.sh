@@ -16,6 +16,10 @@ mkdir -p artifacts
 "${ci[@]}" build migrate tests
 "${ci[@]}" up -d --wait app
 "${ci[@]}" run --rm tests
+# Эталон создаётся на TEST только из успешно проверенной одноразовой БД.
+"${ci[@]}" exec -T db pg_dump -U stockflow -d stockflow_ci --schema-only --no-owner --no-privileges > artifacts/schema.raw.sql
+sed -E '/^--/d; /^\\(un)?restrict /d; /^[[:space:]]*$/d' artifacts/schema.raw.sql > artifacts/schema.sql
+"${ci[@]}" exec -T db psql -X -U stockflow -d stockflow_ci -At -c 'select hash from drizzle.__drizzle_migrations order by created_at,id' > artifacts/migrations.txt
 # Пересоздаём только приложение; сумма операций и номер записи должны сохраниться.
 "${ci[@]}" exec -T db psql -U stockflow -d stockflow_ci -c "INSERT INTO materials(code,name,category,unit) VALUES('PERSIST-CI','Проверка сохранности','QA','шт.');"
 "${ci[@]}" up -d --no-deps --force-recreate --wait app

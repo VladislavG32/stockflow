@@ -158,7 +158,7 @@ export function ReceiptTable({ rows }: { rows: Receipt[] }) {
                     +{item.quantity} {item.unit}
                   </td>
                   <td>{money(item.unitPriceKopecks)} / {money(item.totalKopecks)}</td>
-                  <td>{item.note || "—"}</td>
+                  <td>{item.note || "—"}{item.documentReference && <span className="item-code">Накладная: {item.documentReference}</span>}</td>
                 </tr>
               ))}
             </tbody>

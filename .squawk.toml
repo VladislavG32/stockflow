@@ -1,0 +1,4 @@
+# Эти три рекомендации касаются выбранных в ЛР3 типов и не отключают опасные DDL.
+# serial уже применяется в существующей БД; varchar ограничивает строки так же,
+# как Zod; int32 достаточен при явных лимитах quantity/price.
+excluded_rules = ["prefer-identity", "prefer-text-field", "prefer-bigint-over-int"]

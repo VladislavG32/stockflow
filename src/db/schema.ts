@@ -58,6 +58,9 @@ export const receipts = pgTable(
     // Целые копейки исключают ошибки округления float. NULL сохраняет честный
     // смысл старых поступлений: цена не была введена, это не бесплатная поставка.
     unitPriceKopecks: integer("unit_price_kopecks"),
+    // Второй небольшой шаг ЛР8: источник номера накладной помогает сверять поставку.
+    // Необязательное поле добавляется отдельно для демонстрации автоматизации.
+    documentReference: varchar("document_reference", { length: 120 }),
     receivedOn: varchar("received_on", { length: 10 }).notNull(),
     note: varchar("note", { length: 500 }).notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })

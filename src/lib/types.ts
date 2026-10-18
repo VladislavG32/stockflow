@@ -23,6 +23,7 @@ export type Receipt = {
   quantity: number;
   unitPriceKopecks: number | null;
   totalKopecks: number | null;
+  documentReference: string | null;
   receivedOn: string;
   note: string;
 };

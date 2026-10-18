@@ -46,6 +46,7 @@ export async function getDashboard(): Promise<DashboardData> {
           supplierId: receipts.supplierId,
           quantity: receipts.quantity,
           unitPriceKopecks: receipts.unitPriceKopecks,
+          documentReference: receipts.documentReference,
           receivedOn: receipts.receivedOn,
           note: receipts.note,
           materialName: materials.name,

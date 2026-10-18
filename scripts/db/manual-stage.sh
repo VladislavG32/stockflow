@@ -5,6 +5,7 @@ set -Eeuo pipefail
 source scripts/ops/common.sh
 [[ "$TARGET" == stage && "${CONFIRM_MANUAL_STAGE:-}" == stage ]] || exit 1
 : "${APP_IMAGE:?}" "${MIGRATOR_IMAGE:?}"
+mkdir -p /opt/stockflow-ci/state
 exec 9>/opt/stockflow-ci/state/deploy.lock
 flock -n 9 || exit 1
 bash scripts/db/backup.sh /opt/stockflow-ci/backups

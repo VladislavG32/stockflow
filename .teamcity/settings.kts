@@ -12,6 +12,7 @@ project {
     buildType(Verify)
     buildType(Publish)
     buildType(Stage)
+    buildType(Prod)
 }
 object Source : GitVcsRoot({
     name = "StockFlow GitHub"
@@ -27,7 +28,7 @@ object Verify : BuildType({
     vcs { root(Source) }
     steps { script { name = "РџСЂРѕРІРµСЂРєРё Рё Docker build"; scriptContent = "bash scripts/ci/verify.sh" } }
     triggers { vcs { branchFilter = "+:*" } }
-    artifactRules = "artifacts/** => checks"
+    artifactRules = "artifacts/* => checks"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 object Publish : BuildType({
@@ -41,10 +42,13 @@ object Publish : BuildType({
         // Password-РїР°СЂР°РјРµС‚СЂС‹ env.DOCKERHUB_USER Рё env.DOCKERHUB_TOKEN Р·Р°РґР°СЋС‚СЃСЏ
         // РІ UI РўРћР›Р¬РљРћ СЌС‚РѕР№ РєРѕРЅС„РёРіСѓСЂР°С†РёРё: Verify РЅРµ РґРѕР»Р¶РµРЅ РёС… РЅР°СЃР»РµРґРѕРІР°С‚СЊ.
     }
-    dependencies { snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL } }
+    dependencies {
+        snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Verify) { buildRule = sameChain(); artifactRules = "checks/schema.sql => reference\nchecks/migrations.txt => reference" }
+    }
     steps { script { name = "РџСѓР±Р»РёРєР°С†РёСЏ РїРѕ РїРѕР»РЅРѕРјСѓ SHA"; scriptContent = "bash scripts/ci/publish.sh" } }
     triggers { finishBuildTrigger { buildType = "StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:prod" } }
-    artifactRules = "artifacts/release.env"
+    artifactRules = "artifacts/release.env\nreference/* => reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 
@@ -55,9 +59,23 @@ object Stage : BuildType({
     vcs { root(Source); branchFilter = "+:dev" }
     dependencies {
         snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming" }
+        artifacts(Publish) { buildRule = sameChain(); artifactRules = "release.env => incoming\nreference/* => reference" }
     }
     steps { script { name = "Обновление STAGE с сохранением БД"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
     triggers { finishBuildTrigger { buildType = "StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev" } }
+    artifactRules = "artifacts/release.env\nartifacts/stage-reference/* => reference"
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+})
+object Prod : BuildType({
+    id("StockFlow_Prod")
+    name = "04 Promote verified STAGE to PROD MANUAL"
+    maxRunningBuilds = 1
+    vcs { root(Source); branchFilter = "+:dev" }
+    dependencies {
+        snapshot(Stage) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Stage) { buildRule = sameChain(); artifactRules = "release.env => incoming\nreference/* => reference" }
+    }
+    // НЕТ триггера. Run запускает человек после сверки prod SHA и успешного STAGE.
+    steps { script { name = "Backup, проверка схемы и доставка PROD"; scriptContent = "bash scripts/ci/deliver.sh prod" } }
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })

@@ -17,6 +17,18 @@ previous=$(docker inspect "$app_id" --format '{{.Image}}')
 "${release[@]}" config --quiet
 docker pull "$APP_IMAGE"
 docker pull "$MIGRATOR_IMAGE"
+# Первая фаза ЛР8 требует уже выполненной ручной миграции. Вторая фаза
+# явно включается оператором в локальном target.env после защиты ручного этапа.
+case "${MIGRATION_MODE:?Set manual or auto}" in
+  manual)
+    [[ "$TARGET" != prod ]] || exit 1
+    bash scripts/db/export.sh /opt/stockflow-ci/state/manual-check
+    cmp reference/schema.sql /opt/stockflow-ci/state/manual-check/schema.sql
+    cmp reference/migrations.txt /opt/stockflow-ci/state/manual-check/migrations.txt
+    ;;
+  auto) bash scripts/db/prepare-migration.sh ;;
+  *) exit 1 ;;
+esac
 # При ошибке readiness возвращаем образ; БД не откатываем и не удаляем.
 changed=0
 rollback() {

@@ -1,0 +1,1 @@
+ALTER TABLE "receipts" ADD COLUMN "document_reference" varchar(120);
