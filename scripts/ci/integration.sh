@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Уникальное имя с обязательным префиксом исключает работу с проектом stockflow.
 set -Eeuo pipefail
-export CI_IMAGE="stockflow-check:$(git rev-parse HEAD)"
+export CI_IMAGE="${CI_IMAGE:-stockflow-check:$(git rev-parse HEAD)}"
 project="stockflow-ci-${BUILD_NUMBER:-local}-$$"
 [[ "$project" =~ ^stockflow-ci-[a-zA-Z0-9_-]+$ ]] || exit 1
 ci=(docker compose -p "$project" -f compose.ci.yaml)
@@ -13,7 +13,10 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir -p artifacts
-"${ci[@]}" build migrate tests
+"${ci[@]}" build tests
+if [[ -z "${CI_MIGRATOR_IMAGE:-}" ]]; then
+  "${ci[@]}" build migrate
+fi
 "${ci[@]}" up -d --wait app
 "${ci[@]}" run --rm tests
 # Эталон создаётся на TEST только из успешно проверенной одноразовой БД.

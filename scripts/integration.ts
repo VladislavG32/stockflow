@@ -91,9 +91,12 @@ async function main() {
   });
   const first = `${code}-R1`;
   receiptNumbers.push(first);
-  await request("/api/receipts", { ...makeReceipt(first, 5), unitPriceKopecks: 12345 });
+  await request("/api/receipts", { ...makeReceipt(first, 5), unitPriceKopecks: 12345, documentReference: "Н-001" });
   const priced = await request("/api/dashboard", undefined, "GET", 200);
   assert.equal(priced.receipts.find((r: { number: string }) => r.number === first).totalKopecks, 61725);
+  assert.equal(priced.receipts.find((r: { number: string }) => r.number === first).documentReference, "Н-001");
+  await request("/api/receipts", { ...makeReceipt(`${code}-BAD`, 1), unitPriceKopecks: -1 }, "POST", 400);
+  await request("/api/receipts", { ...makeReceipt(`${code}-BAD`, 1), documentReference: "x".repeat(121) }, "POST", 400);
   // Повтор номера не должен менять ни количество, ни цену исходной операции.
   await request("/api/receipts", { ...makeReceipt(first, 5), unitPriceKopecks: 1 }, "POST", 409);
   assert.equal((await current()).recommended, 15);
@@ -117,6 +120,8 @@ async function main() {
   const second = `${code}-R2`;
   receiptNumbers.push(second);
   await request("/api/receipts", makeReceipt(second, 5));
+  const unpriced = await request("/api/dashboard", undefined, "GET", 200);
+  assert.equal(unpriced.receipts.find((r: { number: string }) => r.number === second).totalKopecks, null);
   assert.equal((await current()).balance, 10);
   assert.equal(
     (await current()).recommended,
@@ -137,6 +142,7 @@ async function main() {
     400,
   );
   // Одновременные поступления не должны терять обновления остатка.
+  await request("/api/materials/2147483647", { minimumStock: 10, targetStock: 20 }, "PATCH", 404);
   await Promise.all(
     Array.from({ length: 4 }, async (_, index) => {
       const number = `${code}-C${index}`;

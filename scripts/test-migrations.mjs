@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, copyFileSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -54,6 +55,19 @@ try {
   const columns = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='receipts' AND column_name='failure_probe'");
   assert.equal(columns.rowCount, 0);
   assert.equal((await pool.query("SELECT count(*)::int n FROM drizzle.__drizzle_migrations")).rows[0].n, journal.entries.length);
+  // Проверяем именно защиту реального migrate.mjs, а не только API Drizzle:
+  // меняем копию уже применённого SQL. Рабочий drizzle/ не затрагивается.
+  const probe = join(folder, "history-probe");
+  mkdirSync(join(probe, "drizzle/meta"), { recursive: true });
+  for (const entry of journal.entries) copyFileSync(join(folder, `${entry.tag}.sql`), join(probe, "drizzle", `${entry.tag}.sql`));
+  writeFileSync(join(probe, "drizzle/meta/_journal.json"), JSON.stringify(journal));
+  const changedFile = join(probe, "drizzle", `${journal.entries[1].tag}.sql`);
+  writeFileSync(changedFile, readFileSync(changedFile, "utf8") + "\n-- altered training copy\n");
+  const rejected = spawnSync(process.execPath, [resolve("scripts/migrate.mjs")], {
+    cwd: probe, env: { ...process.env, DATABASE_URL: url.toString() }, encoding: "utf8",
+  });
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /проверка неизменяемой истории SQL/);
   console.log(`PASS: ${journal.entries.length} миграций, исторические данные, CHECK, повторный запуск, rollback ошибки`);
 } finally {
   await pool.end();

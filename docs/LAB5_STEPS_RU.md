@@ -17,16 +17,15 @@ free -h
 df -h /
 sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci/ssh
 sudo mkdir -p /opt/buildagent/{work,temp,system,tools,plugins}
-cd ~/stockflow
-git fetch origin
+git clone -b codex/lab5-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
+cd ~/stockflow-ci-config
 docker compose -f infra/teamcity/compose.agent.yaml pull
 docker compose -f infra/teamcity/compose.agent.yaml up -d
 docker compose -f infra/teamcity/compose.agent.yaml logs --tail 60 agent
 ```
 
-Если в старом каталоге ЛР3 нет новых infra-файлов: не переключать работающий исходник,
-а клонировать подготовку отдельно: `git clone -b codex/lab5-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config`;
-затем `cd ~/stockflow-ci-config` и выполнить compose команды оттуда.
+Если ~/stockflow-ci-config уже создан в ЛР4, пропустите clone и выполните команды
+из этого каталога. Рабочий исходник ~/stockflow не переключать.
 
 Windows PowerShell, отдельное окно держать открытым весь сеанс CI:
 

@@ -31,15 +31,16 @@
 
 | Проверка | Результат |
 |---|---|
-| npm ci | Успех, lockfile сохранён; npm audit отдельно сообщает9 dev-проблем |
+| npm ci | Успех, lockfile сохранён; audit сообщает9 dev-проблем; production audit:0 |
 | ESLint | Успех, без выключения правил |
 | next typegen + TypeScript | Успех |
 | node:test | 10 групп в итоговой версии, все прошли |
-| Code coverage | 96,79% строк только api/inventory/validation, не всего проекта |
+| Code coverage | 98,17% строк только api/inventory/validation, не всего проекта |
 | Demo ошибка кода | Один и тот же тест упал на <= и прошёл после возврата < во временной копии |
 | HTTP + реальная PostgreSQL17.10 | integration.ts прошёл, включая дубликаты/параллельность/цены |
 | Недоступная БД | Отдельный app с недоступным адресом: health200, ready503, dashboard503 |
-| Миграции |0000→0001→0002; исторические строки; CHECK; повтор; atomic rollback проверены |
+| Миграции |0000→0001→0002; исторические строки; CHECK; повтор; atomic rollback и отказ при изменении hash проверены |
+| Сохранность при restart app | Маркер PERSIST-LOCAL сохранился после остановки и нового запуска standalone |
 | Production Next build | Успех, standalone |
 | Штатный schema export | pg_dump17.6 против PostgreSQL17.10, schema.raw.sql/schema.sql, hash history |
 | Backup непустой БД | pg_dump custom → новая БД pg_restore; все строки трёх таблиц равны |
@@ -47,7 +48,8 @@
 | Squawk2.70.0 |0 замечаний в6 SQL-файлах с документированным контекстом мигратора |
 | Bash syntax | Все .sh проходят bash -n |
 | Compose config | ci, release+base, server, agent, recovery проходят parse/config |
-| TeamCity Kotlin DSL | Maven generate с JDK21 и официальным plugin repo успешно создал XML |
+| Registry manifests | Теги TeamCity server/agent2026.2 и Squawk2.70.0 существуют, metadata проверены |
+| TeamCity Kotlin DSL | Maven generate с JDK21 и официальным plugin repo успешно создал XML для итоговой и всех5 контрольных конфигураций |
 | Docker build/run | НЕ выполнены: Linux Engine Docker Desktop недоступен |
 | TeamCity build/server/agent | НЕ выполнялись; XML generation не равна реальной сборке |
 | Docker Hub push | НЕ выполнялся, нужен пользовательский аккаунт/token |

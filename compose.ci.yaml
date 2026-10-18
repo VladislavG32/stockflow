@@ -16,6 +16,8 @@ services:
       timeout: 2s
       retries: 30
   migrate:
+    # Publish передаёт уже собранный образ: проверяем ровно то, что затем push.
+    image: ${CI_MIGRATOR_IMAGE:-stockflow-ci-migrator:local}
     build:
       context: .
       target: migrator

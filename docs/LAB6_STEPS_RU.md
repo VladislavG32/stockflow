@@ -95,3 +95,31 @@ Gitleaks/ESLint не проверяют CVE пакетов. Не применя�
 1 — synthetic demo. 1–2 — Verify и остановленная доставка. 1 — интерпретация отчёта.
 Вопросы: почему tsc не security; что такое false positive; почему --redact;
 как найти секрет в истории; почему успешный lint не доказывает отсутствие уязвимостей.
+
+## Перенести подготовку через отдельный PR
+
+Windows PowerShell, после завершения предыдущей ЛР:
+
+```powershell
+Set-Location D:\StockFlow
+git fetch origin
+git switch -c feature/lab6-analysis origin/dev
+git merge codex/lab6-ready
+git push -u origin feature/lab6-analysis
+```
+
+В GitHub открыть PR в dev, получить реальное review, merge. Повторить fetch.
+Для демонстрации PROD-ветки (без развёртывания реальной PROD VM):
+
+```powershell
+git fetch origin
+git switch prod
+git merge --ff-only origin/dev
+git push origin prod
+```
+
+Доставка на PROD от этого не запускается. Все новые feature/fix создавайте от
+обновлённого dev, чтобы они наследовали CI-файлы и тесты. Исторические main/ветка
+ЛР3 не содержат новой инфраструктуры; их старый код не переписываем и не выдаём
+неподдерживаемую сборку за успешную. При расхождении истории ff-only остановится:
+разрешите историю обычным PR/merge, не force/reset.
