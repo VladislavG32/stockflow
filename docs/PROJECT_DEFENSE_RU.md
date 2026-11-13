@@ -1,3 +1,5 @@
+> Историческая подготовка ЛР №4–8. Сохранена для продолжения; не является отчётом об их выполнении. Актуальное состояние на 13.11.2026: [аудит](PRE_LAB5_AUDIT_RU.md), [ветки](BRANCHES_RU.md), [указатель](README.md).
+
 # StockFlow Карта проекта для самостоятельной защиты
 
 ## Что делает приложение
@@ -141,3 +143,4 @@ preflight.sh запрещает запуск при недостатке RAM/д�
 | scripts/ci/acceptance.sh | TEST запускает готовые images и изолированную PostgreSQL |
 | infra/teamcity/compose.build-agent.yaml | Отдельный build-agent CI и bind Buildx metadata |
 | tests/ci-infra.test.mjs | Запрет тяжёлой сборки TEST, corrupt bundle, feature publish gate |
+

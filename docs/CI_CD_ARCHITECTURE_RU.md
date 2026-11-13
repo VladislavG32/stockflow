@@ -1,3 +1,5 @@
+> Историческая подготовка ЛР №4–8. Сохранена для продолжения; не является отчётом об их выполнении. Актуальное состояние на 13.11.2026: [аудит](PRE_LAB5_AUDIT_RU.md), [ветки](BRANCHES_RU.md), [указатель](README.md).
+
 # Архитектура CI/CD StockFlow на Linux
 
 ## Выбранное размещение
@@ -126,3 +128,4 @@ Backup — custom pg_dump, pg_restore --list, фактическое восст�
 [зависимости артефактов](https://www.jetbrains.com/help/teamcity/artifact-dependencies.html),
 [лимит памяти Docker BuildKit](https://docs.docker.com/build/builders/drivers/docker-container/).
 Это обоснование конфигурации, не доказательство реального запуска на VM.
+
