@@ -4,10 +4,10 @@ import type { DashboardData } from "@/lib/types";
 import { RecordForm, type Field } from "./record-form";
 
 const materialFields: Field[] = [
-  { name: "code", label: "Код материала", maxLength: 40 },
-  { name: "name", label: "Наименование", maxLength: 160 },
-  { name: "category", label: "Категория", maxLength: 100 },
-  { name: "unit", label: "Единица измерения", maxLength: 20 },
+  { name: "code", label: "Код материала", maxLength: 40, placeholder: "Например, МАТ-001" },
+  { name: "name", label: "Наименование", maxLength: 160, placeholder: "Например, Кабель ВВГ" },
+  { name: "category", label: "Категория", maxLength: 100, placeholder: "Например, Электрика" },
+  { name: "unit", label: "Единица измерения", maxLength: 20, placeholder: "шт., м, кг" },
   {
     name: "minimumStock",
     label: "Минимальный запас",
@@ -107,6 +107,8 @@ export function InventoryForms({
                     name: "receivedOn",
                     label: "Дата поступления",
                     type: "date",
+                    min: "2000-01-01",
+                    max: "2100-12-31",
                   },
                   {
                     name: "note",
@@ -119,7 +121,7 @@ export function InventoryForms({
               />
             </>
           ) : (
-            <p>Сначала создайте хотя бы один материал и одного поставщика.</p>
+            <div className="receipt-help"><p>Для поступления нужны материал и поставщик. Добавьте их в формах рядом, затем вернитесь сюда.</p></div>
           )}
         </details>
       </div>

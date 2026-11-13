@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
 
 export const sections = [
   { id: "materials", label: "Материалы", mark: "01" },
@@ -26,8 +28,28 @@ export function BoxIcon() {
   );
 }
 
-// Общая оболочка сохраняет стиль ЛР №2. Содержимое передаётся как children, без дублирования меню.
+const iconPaths: Record<string, string> = {
+  main: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
+  materials: "m12 3 9 5-9 5-9-5 9-5z M3 8v9l9 5 9-5V8 M12 13v9",
+  suppliers: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M17 4a4 4 0 0 1 0 8 M22 21v-2a4 4 0 0 0-3-3.87",
+  receipts: "M12 3v12 m-5-5 5 5 5-5 M4 16v5h16v-5",
+  balances: "M4 21V11h4v10 M10 21V3h4v18 M16 21v-7h4v7",
+  replenishment: "M3 17 9 11l4 4 8-10 M15 5h6v6",
+};
+
+export function SectionIcon({ id }: { id: string }) {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={iconPaths[id] ?? iconPaths.main} /></svg>;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const [active, setActive] = useState("main");
+  useEffect(() => {
+    const update = () => setActive(window.location.hash.slice(1) || "main");
+    update();
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  const navigation = [{ id: "main", label: "Обзор склада" }, ...sections, { id: "replenishment", label: "План пополнения" }];
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -42,63 +64,43 @@ export function AppShell({ children }: { children: ReactNode }) {
         </a>
         <div className="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
         <nav aria-label="Разделы складского учёта">
-          <a href="#main" className="overview-link">
-            <span aria-hidden="true">▦</span>Обзор склада
-          </a>
-          {sections.map((section) => (
-            <a key={section.id} href={`#${section.id}`}>
-              <span className="nav-number">{section.mark}</span>
+          {navigation.map((section) => (
+            <a key={section.id} href={`#${section.id}`} aria-current={active === section.id ? "location" : undefined}>
+              <SectionIcon id={section.id} />
               {section.label}
             </a>
           ))}
-          <a href="#replenishment">
-            <span className="nav-number">05</span>План пополнения
-          </a>
         </nav>
         <div className="sidebar-note">
           <span className="note-symbol" aria-hidden="true">
             ↗
           </span>
-          <strong>От идеи к системе</strong>
-          <p>
-            Учебный проект
-            <br />
-            Московского Политеха
-          </p>
-          <span className="lab-chip">ЛР №3 · Контейнеризация</span>
+          <strong>Запасы под контролем</strong>
+          <p>Задайте минимум и цель — StockFlow рассчитает, что нужно пополнить.</p>
+          <a className="sidebar-plan" href="#replenishment">Перейти к плану →</a>
         </div>
         <div className="sidebar-footer">
           <span className="avatar" aria-hidden="true">
             СФ
           </span>
           <div>
-            <strong>Учебное пространство</strong>
-            <span>Версия 0.2.0</span>
+            <strong>Складской учёт</strong>
+            <span>Материалы и поставки</span>
           </div>
         </div>
       </aside>
       <div className="content-shell">
         <header className="topbar">
           <span>
-            Рабочее пространство <span className="breadcrumb-slash">/</span>
-            <strong>Обзор</strong>
+            StockFlow <span className="breadcrumb-slash">/</span>
+            <strong>{navigation.find((item) => item.id === active)?.label ?? "Обзор склада"}</strong>
           </span>
-          <span className="prototype-badge">
-            <span aria-hidden="true" />
-            Учебный прототип
-          </span>
+          <a className="topbar-action" href="#entry-title">+ Новая запись</a>
         </header>
-        <main id="main">
+        <main id="main" tabIndex={-1}>
           {children}
-          <div className="learning-note">
-            <span aria-hidden="true">ⓘ</span>
-            <p>
-              Развитие проекта для ЛР №3. Данные сохраняются в PostgreSQL.
-              Версия ЛР №2 остаётся в истории Git: 1fbdd2b.
-            </p>
-          </div>
           <footer className="page-footer">
-            <span>Московский Политех · StockFlow</span>
+            <span>StockFlow · Складской учёт</span>
             <div className="footer-links">
               <a href="/api/health">Состояние приложения ↗</a>
               <a href="/api/ready">Готовность базы ↗</a>
@@ -130,7 +132,7 @@ export function Panel({
           <h2 id={`${id}-title`}>{title}</h2>
           <p>{subtitle}</p>
         </div>
-        {action ?? <span className="panel-dot" aria-hidden="true" />}
+        {action}
       </div>
       {children}
     </section>
