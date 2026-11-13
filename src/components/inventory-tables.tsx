@@ -37,6 +37,9 @@ export function MaterialTable({
                     <span className="item-code">
                       {item.code} · {item.unit}
                     </span>
+                    <span className={`stock-badge${item.shortage ? " warning-text" : ""}`}>
+                      {item.balance === 0 ? "Нет в наличии" : item.shortage ? "Ниже минимума" : "В наличии"}
+                    </span>
                   </td>
                   <td>{item.category}</td>
                   <td>
@@ -201,7 +204,7 @@ export function BalanceTable({ rows }: { rows: Material[] }) {
                   Минимум {item.minimumStock} · цель {item.targetStock}
                 </span>
                 <span className={item.shortage ? "warning-text" : ""}>
-                  {item.shortage ? "Ниже минимума" : "В пределах нормы"}
+                  {item.balance === 0 ? "Нет в наличии" : item.shortage ? "Ниже минимума" : "Не ниже минимума"}
                 </span>
               </div>
             </li>

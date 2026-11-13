@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { DashboardData } from "@/lib/types";
+import { materialView, type MaterialSort } from "@/lib/material-view";
 import { AppShell, BoxIcon, sections } from "./ui";
 import { InventoryForms } from "./inventory-forms";
 import {
@@ -28,6 +29,7 @@ export function Dashboard({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [stockFilter, setStockFilter] = useState("");
+  const [sort, setSort] = useState<MaterialSort>("name");
   const [updated, setUpdated] = useState("");
 
   async function refresh() {
@@ -52,14 +54,7 @@ export function Dashboard({
   const search = query.trim().toLocaleLowerCase("ru-RU");
   const matches = (...values: string[]) =>
     values.some((value) => value.toLocaleLowerCase("ru-RU").includes(search));
-  const visibleMaterials =
-    data?.materials.filter(
-      (item) =>
-        matches(item.name, item.code, item.category) &&
-        (!category || item.category === category) &&
-        (!stockFilter ||
-          (stockFilter === "low" ? item.shortage : !item.shortage)),
-    ) ?? [];
+  const visibleMaterials = materialView(data?.materials ?? [], query, category, stockFilter, sort);
   const visibleSuppliers =
     data?.suppliers.filter((item) => matches(item.name, item.contact)) ?? [];
   const visibleReceipts =
@@ -205,7 +200,16 @@ export function Dashboard({
               >
                 <option value="">Любой запас</option>
                 <option value="low">Ниже минимума</option>
-                <option value="normal">В пределах нормы</option>
+                <option value="normal">Не ниже минимума</option>
+              </select>
+            </label>
+            <label>
+              <span>Порядок материалов</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value as MaterialSort)}>
+                <option value="name">По названию: А–Я</option>
+                <option value="code">По коду: А–Я</option>
+                <option value="balance">Остаток: по возрастанию</option>
+                <option value="recommended">К закупке: по убыванию</option>
               </select>
             </label>
             <button
@@ -214,10 +218,15 @@ export function Dashboard({
                 setQuery("");
                 setCategory("");
                 setStockFilter("");
+                setSort("name");
               }}
             >
               Сбросить
             </button>
+          </div>
+          <div className="filter-result" role="status">
+            <span>Материалов: {visibleMaterials.length} из {data.materials.length} · поставщиков: {visibleSuppliers.length} · поступлений: {visibleReceipts.length}</span>
+            <span>Категория и запас применяются к материалам, остаткам и плану</span>
           </div>
           <div className="panels-grid">
             <MaterialTable rows={visibleMaterials} onSaved={refresh} />
