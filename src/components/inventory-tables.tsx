@@ -223,8 +223,8 @@ export function ReplenishmentTable({ rows }: { rows: Material[] }) {
   return (
     <Panel
       id="replenishment"
-      title="Умный план пополнения склада"
-      subtitle="Прозрачный расчёт без внешних сервисов и ИИ"
+      title="План пополнения"
+      subtitle="Рекомендации на основе остатков и целевого запаса"
       action={
         <a className="button secondary" href="/api/replenishment/export">
           Экспорт CSV ↓

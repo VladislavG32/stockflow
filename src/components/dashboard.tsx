@@ -81,11 +81,10 @@ export function Dashboard({
     <AppShell>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">ПРОСТОЙ УЧЁТ. ПОЛНЫЙ ОБЗОР.</p>
-          <h1>StockFlow</h1>
-          <p className="subtitle">Система автоматизации складского учёта</p>
+          <p className="eyebrow">STOCKFLOW / РАБОЧЕЕ ПРОСТРАНСТВО</p>
+          <h1>Обзор склада</h1>
+          <p className="subtitle">Материалы, поступления и запасы — в одном месте</p>
         </div>
-        <span className="version-tag">ЛР №3 / 0.2</span>
       </div>
       <div className="intro-banner">
         <div className="intro-icon">
@@ -94,8 +93,7 @@ export function Dashboard({
         <div>
           <strong>Всё о складе — в одном пространстве</strong>
           <p>
-            Живые данные, понятные операции и план пополнения до целевого
-            запаса.
+            Регистрируйте поступления и следите за остатками. План пополнения рассчитывается по вашим порогам.
           </p>
         </div>
         <a href="#replenishment" className="banner-link">
@@ -106,7 +104,7 @@ export function Dashboard({
         <span aria-live="polite">
           {updated
             ? `Данные обновлены в ${updated}`
-            : "Данные из PostgreSQL · обновляйте при работе в нескольких вкладках"}
+            : "Общий снимок склада · обновляйте при работе в нескольких вкладках"}
         </span>
         <button
           className="button secondary"
@@ -172,7 +170,7 @@ export function Dashboard({
           )}
           <InventoryForms data={data} onSaved={refresh} />
           <div className="data-label">
-            <h2>Обзор склада</h2>
+            <h2>Данные склада</h2>
             <span>Показатели выше относятся ко всему складу</span>
           </div>
           <div className="filter-bar">
