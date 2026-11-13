@@ -132,7 +132,7 @@ export function Panel({
           <h2 id={`${id}-title`}>{title}</h2>
           <p>{subtitle}</p>
         </div>
-        {action ?? <span className="panel-dot" aria-hidden="true" />}
+        {action}
       </div>
       {children}
     </section>

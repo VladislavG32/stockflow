@@ -1,12 +1,23 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
 const read = path => readFileSync(path, "utf8");
-const bash = process.env.STOCKFLOW_BASH || "bash";
+// Windows App Execution Alias может вести в WSL без /bin/bash.
+// Git сам сообщает свой каталог; пользовательский STOCKFLOW_BASH имеет приоритет.
+function defaultBash() {
+  if (process.platform !== "win32") return "bash";
+  const git = spawnSync("git", ["--exec-path"], { encoding: "utf8" });
+  if (git.status === 0) {
+    const candidate = resolve(git.stdout.trim(), "../../..", "bin/bash.exe");
+    if (existsSync(candidate)) return candidate;
+  }
+  return "bash";
+}
+const bash = process.env.STOCKFLOW_BASH || defaultBash();
 
 test("CI: сборки отделены от TEST и Windows localhost", () => {
   const dsl = read(".teamcity/settings.kts");

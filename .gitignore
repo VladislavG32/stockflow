@@ -6,7 +6,15 @@ coverage/
 artifacts/
 .env
 .env.*
+*.env
 !.env.example
+!*.env.example
+# Локальные резервные копии и файлы аутентификации PostgreSQL.
+backups/
+*.dump
+*.backup
+.pgpass
+pgpass.conf
 *.tsbuildinfo
 next-env.d.ts
 *.log

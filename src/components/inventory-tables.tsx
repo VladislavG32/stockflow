@@ -18,7 +18,7 @@ export function MaterialTable({
       subtitle="Каталог и индивидуальные пороги пополнения"
     >
       {rows.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Прокручиваемая таблица материалов" tabIndex={0}>
           <table>
             <caption className="sr-only">Каталог материалов</caption>
             <thead>
@@ -129,7 +129,7 @@ export function ReceiptTable({ rows }: { rows: Receipt[] }) {
       subtitle="Журнал зарегистрированных операций"
     >
       {rows.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Прокручиваемый журнал поступлений" tabIndex={0}>
           <table>
             <caption className="sr-only">Журнал поступлений</caption>
             <thead>
@@ -240,7 +240,7 @@ export function ReplenishmentTable({ rows }: { rows: Material[] }) {
         актуальный план независимо от фильтров.
       </div>
       {rows.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Прокручиваемый план пополнения" tabIndex={0}>
           <table>
             <caption className="sr-only">Материалы, требующие закупки</caption>
             <thead>
