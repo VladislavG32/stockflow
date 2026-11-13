@@ -128,4 +128,3 @@ Backup — custom pg_dump, pg_restore --list, фактическое восст�
 [зависимости артефактов](https://www.jetbrains.com/help/teamcity/artifact-dependencies.html),
 [лимит памяти Docker BuildKit](https://docs.docker.com/build/builders/drivers/docker-container/).
 Это обоснование конфигурации, не доказательство реального запуска на VM.
-

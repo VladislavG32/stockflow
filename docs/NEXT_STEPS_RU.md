@@ -23,4 +23,3 @@ StockFlow готовится к ЛР4–8 без Docker Desktop. Сейчас п
 Windows нужен для PowerShell/SSH/Git/браузера. URL Server задаётся private env,
 localhost контейнера не является CI. Реальные TeamCity/Hub/VM результаты пока не
 получены. Индивидуальный сданный ТЗ нужен для подтверждения40% функций, не строк кода.
-

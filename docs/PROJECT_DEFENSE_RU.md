@@ -143,4 +143,3 @@ preflight.sh запрещает запуск при недостатке RAM/д�
 | scripts/ci/acceptance.sh | TEST запускает готовые images и изолированную PostgreSQL |
 | infra/teamcity/compose.build-agent.yaml | Отдельный build-agent CI и bind Buildx metadata |
 | tests/ci-infra.test.mjs | Запрет тяжёлой сборки TEST, corrupt bundle, feature publish gate |
-

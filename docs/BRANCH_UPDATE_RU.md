@@ -54,4 +54,3 @@ git push -u origin fix/lab4-linux-ci
 секреты Publish на ней заново, непрозрачные credentialsJSON от старого Server не копировать.
 Следующие ЛР переходят по ready-веткам через собственные feature/PR как раньше.
 Старые prep-теги — исторические промежуточные точки; выполнять по updated ready-веткам.
-
