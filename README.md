@@ -132,6 +132,7 @@ docs/            Инструкции и исторические результ
 
 - [Указатель и порядок чтения](docs/README.md).
 - [Текущий аудит, матрица функций и проверки](docs/PRE_LAB5_AUDIT_RU.md).
+- [Финальная проверка PR №1, совместимость с ЛР №5 и смена default branch](docs/FINAL_REVIEW_PR1_RU.md).
 - [Ветки и правила продолжения](docs/BRANCHES_RU.md).
 - [Исторические проверки ЛР №3](docs/VERIFICATION_RU.md) и [инструкция ЛР №3](docs/LAB3_STEPS_RU.md).
 - [Инструкция ЛР №4](docs/LAB4_STEPS_RU.md), [Linux CI](docs/LINUX_CI_SETUP_RU.md), [архитектура CI](docs/CI_CD_ARCHITECTURE_RU.md).
