@@ -191,7 +191,8 @@ td strong { color: var(--ink); font-size: 15px; font-weight: 600; }
   .supplier-list { grid-template-columns: minmax(0,1fr); }
   .supplier-list, .balance-list { padding-inline: 20px; }
   .balance-meta { flex-wrap: wrap; }
-  .balance-heading { align-items: flex-start; }
+  .balance-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .balance-heading > span { align-self: flex-end; }
   .panel-footer { padding-inline: 20px; }
   input, select { font-size: 16px; }
 }
