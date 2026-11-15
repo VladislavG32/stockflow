@@ -100,7 +100,7 @@ export function SupplierList({ rows }: { rows: Supplier[] }) {
       subtitle="Справочник партнёров склада"
     >
       {rows.length ? (
-        <ul className="supplier-list">
+        <ul className="supplier-list" tabIndex={0} aria-label="Список поставщиков">
           {rows.map((item) => (
             <li key={item.id}>
               <span className="supplier-avatar">{item.name.slice(0, 1)}</span>
@@ -181,7 +181,7 @@ export function BalanceTable({ rows }: { rows: Material[] }) {
       subtitle="Рассчитаны из поступлений, без ручного ввода"
     >
       {rows.length ? (
-        <ul className="balance-list">
+        <ul className="balance-list" tabIndex={0} aria-label="Список остатков">
           {rows.map((item) => (
             <li key={item.id}>
               <div className="balance-heading">

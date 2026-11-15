@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { activeSection, navigation } from "@/lib/navigation";
 
 export const sections = [
   { id: "materials", label: "Материалы", mark: "01" },
@@ -41,15 +42,40 @@ export function SectionIcon({ id }: { id: string }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={iconPaths[id] ?? iconPaths.main} /></svg>;
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, formsAvailable }: { children: ReactNode; formsAvailable: boolean }) {
   const [active, setActive] = useState("main");
   useEffect(() => {
-    const update = () => setActive(window.location.hash.slice(1) || "main");
-    update();
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const positions = navigation.flatMap(({ id }) => {
+        const element = document.getElementById(id);
+        return element ? [{ id, top: element.getBoundingClientRect().top }] : [];
+      });
+      const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+      const atBottom = window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+      setActive(activeSection(positions, padding + 2, atBottom));
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("hashchange", schedule);
+    window.addEventListener("pageshow", schedule);
+    const observer = new ResizeObserver(schedule);
+    const main = document.getElementById("main");
+    if (main) observer.observe(main);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("hashchange", schedule);
+      window.removeEventListener("pageshow", schedule);
+    };
   }, []);
-  const navigation = [{ id: "main", label: "Обзор склада" }, ...sections, { id: "replenishment", label: "План пополнения" }];
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -95,7 +121,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             StockFlow <span className="breadcrumb-slash">/</span>
             <strong>{navigation.find((item) => item.id === active)?.label ?? "Обзор склада"}</strong>
           </span>
-          <a className="topbar-action" href="#entry-title">+ Новая запись</a>
+          {formsAvailable ? (
+            <a className="topbar-action" href="#entry-title">+ Новая запись</a>
+          ) : (
+            <span className="topbar-action" aria-disabled="true" title="Сначала обновите данные склада">+ Новая запись</span>
+          )}
         </header>
         <main id="main" tabIndex={-1}>
           {children}

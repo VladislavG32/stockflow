@@ -73,7 +73,7 @@ export function Dashboard({
     : [];
 
   return (
-    <AppShell>
+    <AppShell formsAvailable={data !== null}>
       <div className="page-heading">
         <div>
           <p className="eyebrow">STOCKFLOW / РАБОЧЕЕ ПРОСТРАНСТВО</p>

@@ -37,7 +37,7 @@ export function InventoryForms({
   return (
     <section className="entry-section" aria-labelledby="entry-title">
       <div className="data-label">
-        <h2 id="entry-title">Работа со складом</h2>
+        <h2 id="entry-title" tabIndex={-1}>Работа со складом</h2>
         <span>Поля со * обязательны · количество — целое число</span>
       </div>
       <div className="entry-grid">
