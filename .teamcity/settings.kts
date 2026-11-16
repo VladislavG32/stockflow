@@ -44,7 +44,8 @@ object Publish : BuildType({
         artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/ci-images.* => incoming" }
     }
     steps { script { name = "Linux CI: push проверенных образов без rebuild"; scriptContent = "bash scripts/ci/publish.sh" } }
-    triggers { finishBuildTrigger { buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:<default>\n+:prod" } }
+    // Подготовка перед ЛР №5: Publish доступен вручную, автоматический запуск запрещён.
+    triggers { finishBuildTrigger { enabled = false; buildType = "${DslContext.projectId.value}_StockFlow_Verify"; successfulOnly = true; branchFilter = "+:dev\n+:<default>\n+:prod" } }
     artifactRules = "artifacts/release.env"
     requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
 })

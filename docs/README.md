@@ -1,5 +1,9 @@
 # Документация StockFlow
 
+Формат исправленной передачи CI-артефактов и отключённая автоматика Publish:
+[CI_BUNDLE_FORMAT_RU](CI_BUNDLE_FORMAT_RU.md). Это изменение инфраструктуры перед
+ЛР №5, без запуска Publish/Deploy и без изменения глобального лимита TeamCity.
+
 Приоритет для подготовки к merge: [проверка PR №1 от 16.11.2026](PRE_MERGE_PR1_RU.md), [порядок обновления веток](BRANCH_UPDATE_RU.md), [актуальная ЛР №4](LAB4_STEPS_RU.md).
 
 Актуальная точка входа — [основной README](../README.md). Результаты новой проверки от 13 ноября 2026: [PRE_LAB5_AUDIT_RU](PRE_LAB5_AUDIT_RU.md); состояние веток: [BRANCHES_RU](BRANCHES_RU.md).
