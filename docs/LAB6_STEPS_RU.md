@@ -5,7 +5,7 @@
 Выбрать минимум два вида анализа: качество, безопасность кода, поиск секретов.
 На максимальной критичности сборка должна прерываться. Подготовлены два требуемых
 вида: ESLint (качество) и Gitleaks (секреты). TypeScript — дополнительная проверка
-контрактов, не анализ безопасности. Контрольная ветка `codex/lab6-ready`.
+контрактов, не анализ безопасности. Контрольная ветка `prep/lab6-static-analysis`.
 
 ## Выбор инструментов
 
@@ -36,7 +36,7 @@ Gitleaks `--redact` скрывает значения в JSON/логе, но с�
 ```bash
 cd ~/stockflow-ci-config
 git fetch origin
-git switch --detach origin/codex/lab6-ready
+git switch --detach origin/prep/lab6-static-analysis
 bash scripts/ci/preflight.sh build
 docker run --rm --memory=2300m -v "$PWD:$PWD" -w "$PWD" node:24-bookworm-slim bash -ec 'npm ci; npm run lint; npm run typecheck'
 bash scripts/ci/static.sh
@@ -50,7 +50,7 @@ bash scripts/demo/secret.sh
 именно сканера; сценарий проверяет её и завершается PASS. Файл удаляется автоматически.
 Не добавлять настоящий Docker Hub/GitHub token ради скриншота.
 
-В TeamCity перевести Settings root на codex/lab6-ready; вносить код через feature/PR
+В TeamCity перевести Settings root на prep/lab6-static-analysis; вносить код через feature/PR
 из ЛР5. Verify на stockflow-build-agent запускает static.sh, npm lint/typecheck/tests/build
 и архивирует образы. TEST-agent выполняет только доставку Stage. Успешный
 DEV продолжает Publish/Stage; при любой ошибке зависимые конфигурации не стартуют.
@@ -98,7 +98,7 @@ Windows PowerShell, после завершения предыдущей ЛР:
 Set-Location D:\StockFlow
 git fetch origin
 git switch -c feature/lab6-analysis origin/dev
-git merge codex/lab6-ready
+git merge prep/lab6-static-analysis
 git push -u origin feature/lab6-analysis
 ```
 
