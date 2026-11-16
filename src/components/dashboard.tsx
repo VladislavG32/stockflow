@@ -199,6 +199,7 @@ export function Dashboard({
                 onChange={(event) => setStockFilter(event.target.value)}
               >
                 <option value="">Любой запас</option>
+                <option value="empty">Нет в наличии</option>
                 <option value="low">Ниже минимума</option>
                 <option value="normal">Не ниже минимума</option>
               </select>
