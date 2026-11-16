@@ -18,7 +18,7 @@ export function MaterialTable({
       subtitle="Каталог и индивидуальные пороги пополнения"
     >
       {rows.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Прокручиваемая таблица материалов" tabIndex={0}>
           <table>
             <caption className="sr-only">Каталог материалов</caption>
             <thead>
@@ -36,6 +36,9 @@ export function MaterialTable({
                     <strong>{item.name}</strong>
                     <span className="item-code">
                       {item.code} · {item.unit}
+                    </span>
+                    <span className={`stock-badge${item.shortage ? " warning-text" : ""}`}>
+                      {item.balance === 0 ? "Нет в наличии" : item.shortage ? "Ниже минимума" : "В наличии"}
                     </span>
                   </td>
                   <td>{item.category}</td>
@@ -97,7 +100,7 @@ export function SupplierList({ rows }: { rows: Supplier[] }) {
       subtitle="Справочник партнёров склада"
     >
       {rows.length ? (
-        <ul className="supplier-list">
+        <ul className="supplier-list" tabIndex={0} aria-label="Список поставщиков">
           {rows.map((item) => (
             <li key={item.id}>
               <span className="supplier-avatar">{item.name.slice(0, 1)}</span>
@@ -126,7 +129,7 @@ export function ReceiptTable({ rows }: { rows: Receipt[] }) {
       subtitle="Журнал зарегистрированных операций"
     >
       {rows.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Прокручиваемый журнал поступлений" tabIndex={0}>
           <table>
             <caption className="sr-only">Журнал поступлений</caption>
             <thead>
@@ -178,7 +181,7 @@ export function BalanceTable({ rows }: { rows: Material[] }) {
       subtitle="Рассчитаны из поступлений, без ручного ввода"
     >
       {rows.length ? (
-        <ul className="balance-list">
+        <ul className="balance-list" tabIndex={0} aria-label="Список остатков">
           {rows.map((item) => (
             <li key={item.id}>
               <div className="balance-heading">
@@ -201,7 +204,7 @@ export function BalanceTable({ rows }: { rows: Material[] }) {
                   Минимум {item.minimumStock} · цель {item.targetStock}
                 </span>
                 <span className={item.shortage ? "warning-text" : ""}>
-                  {item.shortage ? "Ниже минимума" : "В пределах нормы"}
+                  {item.balance === 0 ? "Нет в наличии" : item.shortage ? "Ниже минимума" : "Не ниже минимума"}
                 </span>
               </div>
             </li>
@@ -223,8 +226,8 @@ export function ReplenishmentTable({ rows }: { rows: Material[] }) {
   return (
     <Panel
       id="replenishment"
-      title="Умный план пополнения склада"
-      subtitle="Прозрачный расчёт без внешних сервисов и ИИ"
+      title="План пополнения"
+      subtitle="Рекомендации на основе остатков и целевого запаса"
       action={
         <a className="button secondary" href="/api/replenishment/export">
           Экспорт CSV ↓
@@ -237,7 +240,7 @@ export function ReplenishmentTable({ rows }: { rows: Material[] }) {
         актуальный план независимо от фильтров.
       </div>
       {rows.length ? (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Прокручиваемый план пополнения" tabIndex={0}>
           <table>
             <caption className="sr-only">Материалы, требующие закупки</caption>
             <thead>

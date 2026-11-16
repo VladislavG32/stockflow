@@ -10,6 +10,7 @@ const code = `QA-${randomUUID().slice(0, 12).toUpperCase()}`;
 const supplierName = `${code}-Поставщик`;
 const receiptNumbers: string[] = [];
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+let cleanupVerified = false;
 async function request(
   path: string,
   body?: unknown,
@@ -60,6 +61,9 @@ async function main() {
     materialId,
     "BASE_URL и DATABASE_URL должны относиться к одной БД",
   );
+  const storedSupplier = await pool.query("select id from suppliers where name = $1", [supplierName]);
+  assert.equal(storedSupplier.rows[0]?.id, supplierId, "Поставщик должен находиться в той же БД");
+  cleanupVerified = true;
   await request("/api/materials", material, "POST", 409);
   await request("/api/suppliers", { name: supplierName }, "POST", 409);
   await request(
@@ -171,6 +175,8 @@ main()
   })
   .finally(async () => {
     try {
+      // При несовпадении окружений не удаляем ничего через непроверенное соединение.
+      if (!cleanupVerified) return;
       await pool.query("delete from receipts where number = any($1::text[])", [
         receiptNumbers,
       ]);
