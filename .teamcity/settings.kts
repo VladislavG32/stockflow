@@ -4,14 +4,30 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import jetbrains.buildServer.configs.kotlin.triggers.finishBuildTrigger
 import jetbrains.buildServer.configs.kotlin.vcs.GitVcsRoot
 
-// Server и тяжёлый build-agent находятся на отдельном Linux CI-хосте.
-// TEST имеет только агент готовых контейнеров/доставки; Windows — SSH/Git/браузер.
+// Фактически Server обнаружен на TEST http://192.168.56.11:8111.
+// Build-agent также запускался на TEST; имена/доступность перепроверить после старта VM.
 version = "2026.2"
 project {
     vcsRoot(Source)
     buildType(Verify)
     buildType(Publish)
+    buildType(Stage)
 }
+object Stage : BuildType({
+    id("StockFlow_Stage")
+    name = "03 Deploy STAGE from DEV"
+    maxRunningBuilds = 1
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:<default>" }
+    params { param("env.CI_BRANCH", "%teamcity.build.vcs.branch.${DslContext.projectId.value}_Source%") }
+    dependencies {
+        snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Publish) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming" }
+    }
+    steps { script { name = "TEST: доставка проверенных digest на STAGE"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
+    // До проверки VM доставка также запускается только вручную.
+    triggers { finishBuildTrigger { enabled = false; buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev\n+:<default>" } }
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+})
 object Source : GitVcsRoot({
     name = "StockFlow GitHub"
     url = "https://github.com/VladislavG32/stockflow.git"

@@ -22,7 +22,7 @@ function defaultBash() {
 const bash = process.env.STOCKFLOW_BASH || defaultBash();
 
 test("Publish запускается только вручную и использует артефакты той же цепочки", () => {
-  const dsl = read(".teamcity/settings.kts").split("object Publish :")[1];
+  const dsl = read(".teamcity/settings.kts").split("object Publish :")[1].split("object ")[0];
   assert.equal([...dsl.matchAll(/\btriggers\s*\{/g)].length, 1);
   const triggers = dsl.split("triggers {")[1].split("    artifactRules")[0];
   assert.equal([...triggers.matchAll(/\bfinishBuildTrigger\s*\{/g)].length, 1);
