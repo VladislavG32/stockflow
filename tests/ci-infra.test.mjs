@@ -47,10 +47,12 @@ function bundleFixture(run) {
     const tar = spawnSync(bash, ["-c", 'tar --force-local -czf "$1/ci-images.tar.gz" -C "$1" payload', "test", unix], { encoding: "utf8", timeout: 15000 });
     assert.equal(tar.status, 0, tar.stderr);
     const archive = readFileSync(join(dir, "ci-images.tar.gz"));
-    writeFileSync(join(dir, "docker"), '#!/usr/bin/env bash\nset -eu\nprintf "%s\\n" "$1" >> "$DOCKER_CALLS"\ncase "$1" in\nload) cat > "$LOADED_ARCHIVE";;\nimage) git rev-parse HEAD;;\n*) exit 99;;\nesac\n', { mode: 0o755 });
+    writeFileSync(join(dir, "docker"), '#!/usr/bin/env bash\nset -eu\nprintf "%s\\n" "$1" >> "$DOCKER_CALLS"\ncase "$1" in\nload) cat > "$LOADED_ARCHIVE";;\nimage) printf "%s\\n" "${MOCK_IMAGE_REVISION:-$MOCK_REVISION}";;\n*) exit 99;;\nesac\n', { mode: 0o755 });
     // BASH_ENV задаёт функцию вместо поиска docker.exe в Windows PATH.
-    writeFileSync(join(dir, "mock-env"), 'docker() { bash "$MOCK_DOCKER" "$@"; }\nexport -f docker\n');
-    const env = { BASH_ENV: `${unix}/mock-env`, MOCK_DOCKER: `${unix}/docker`, DOCKER_CALLS: `${unix}/calls`, LOADED_ARCHIVE: `${unix}/loaded.tar` };
+    // node:24-bookworm-slim не обязан содержать git: обе внешние зависимости
+    // загрузчика подменены только внутри тестового процесса.
+    writeFileSync(join(dir, "mock-env"), 'docker() { bash "$MOCK_DOCKER" "$@"; }\ngit() { printf "%s\\n" "$MOCK_REVISION"; }\nexport -f docker git\n');
+    const env = { BASH_ENV: `${unix}/mock-env`, MOCK_DOCKER: `${unix}/docker`, DOCKER_CALLS: `${unix}/calls`, LOADED_ARCHIVE: `${unix}/loaded.tar`, MOCK_REVISION: "1".repeat(40) };
     const split = execute("scripts/ci/split-bundle.sh", { STOCKFLOW_BUNDLE_PART_BYTES: "40" });
     assert.equal(split.status, 0, split.stderr);
     const parts = readdirSync(dir).filter(name => name.startsWith("ci-images.tar.gz.part-")).sort();
@@ -58,7 +60,7 @@ function bundleFixture(run) {
     assert.ok(parts.every(name => statSync(join(dir, name)).size <= 40));
     assert.equal(existsSync(join(dir, "ci-images.tar.gz")), false);
     assert.equal(readFileSync(join(dir, "ci-images.sha256"), "utf8").replace(" *ci-images", "  ci-images"), `${checksum(archive)}  ci-images.tar.gz\n`);
-    run({ dir, parts, archive, load: () => execute("scripts/ci/load-bundle.sh", env) });
+    run({ dir, parts, archive, load: (override = {}) => execute("scripts/ci/load-bundle.sh", { ...env, ...override }) });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 
@@ -71,6 +73,14 @@ test("Фрагменты восстанавливают исходный арх�
     const tar = spawnSync(bash, ["-c", 'tar --force-local -xOf "$1/loaded.tar" payload', "test", dir.replaceAll("\\", "/")], { encoding: "utf8", timeout: 15000 });
     assert.equal(tar.status, 0, tar.stderr);
     assert.equal(tar.stdout, "verified image bytes".repeat(200));
+  });
+});
+
+test("Загруженные образы с revision другого snapshot отвергаются", () => {
+  bundleFixture(({ dir, load }) => {
+    const result = load({ MOCK_IMAGE_REVISION: "2".repeat(40) });
+    assert.equal(result.status, 1, result.stderr);
+    assert.equal(readFileSync(join(dir, "calls"), "utf8"), "load\nimage\n");
   });
 });
 
