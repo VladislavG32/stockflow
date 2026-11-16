@@ -5,11 +5,11 @@
 Исправления добавляются обычными коммитами и merge в порядке:
 
 ```text
-codex/lab4-ready
-  → codex/lab5-ready
-  → codex/lab6-ready
-  → codex/lab7-ready
-  → codex/lab8-manual-ready
+prep/lab4-ci
+  → prep/lab5-delivery
+  → prep/lab6-static-analysis
+  → prep/lab7-testing
+  → prep/lab8-migrations
   → feature/labs4-8-preparation
 ```
 
@@ -24,11 +24,11 @@ Windows PowerShell, после проверки локальных файлов:
 Set-Location D:\StockFlow
 git status --short
 git fetch origin
-git push origin codex/lab4-ready
-git push origin codex/lab5-ready
-git push origin codex/lab6-ready
-git push origin codex/lab7-ready
-git push origin codex/lab8-manual-ready
+git push origin prep/lab4-ci
+git push origin prep/lab5-delivery
+git push origin prep/lab6-static-analysis
+git push origin prep/lab7-testing
+git push origin prep/lab8-migrations
 git push origin feature/labs4-8-preparation
 ```
 
@@ -40,16 +40,16 @@ git push origin feature/labs4-8-preparation
 У вас уже могут существовать dev/prod на b0b4fb9. Для текущей ЛР4 создать PR:
 
 ```powershell
-git switch -c fix/lab4-linux-ci codex/lab4-ready
+git switch -c fix/lab4-linux-ci prep/lab4-ci
 git push -u origin fix/lab4-linux-ci
 ```
 
 В GitHub PR fix/lab4-linux-ci → dev; после review merge. Для демонстрации prod
-аналогичный обычный PR из codex/lab4-ready → prod. Не переносить финальную ветку
+аналогичный обычный PR из prep/lab4-ci → prod. Не переносить финальную ветку
 в dev/prod на этапе ЛР4. Прямой fast-forward допустим только если правила GitHub
 это разрешают и remote не содержит других коммитов; PR понятнее для защиты.
 
-После merge выбрать Versioned Settings root codex/lab4-ready и Always current settings,
+После merge выбрать Versioned Settings root prep/lab4-ci и Always current settings,
 а build source оставить dev. Новая CI имеет новые admin/credential records: создать
 секреты Publish на ней заново, непрозрачные credentialsJSON от старого Server не копировать.
 Следующие ЛР переходят по ready-веткам через собственные feature/PR как раньше.
