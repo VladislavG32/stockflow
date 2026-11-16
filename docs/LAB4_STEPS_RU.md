@@ -4,7 +4,7 @@
 
 Методичка: push образа ЛР3 в Docker Hub, TeamCity Server, администратор и реальные
 участники, GitHub, Docker build веток и push DEV/PROD. Конфигурация не заменяет
-реальные запуски. Контрольная ветка codex/lab4-ready, без будущих миграций.
+реальные запуски. Контрольная ветка prep/lab4-ci, без будущих миграций.
 Windows используется для Git/SSH/браузера; Docker Desktop не требуется.
 
 ## 1 Подготовить Linux CI
@@ -59,19 +59,19 @@ Builder сохраняет локальный образ через --load; эт
 
 ```powershell
 Set-Location D:\StockFlow
-git push -u origin codex/lab4-ready
-git push origin codex/lab5-ready codex/lab6-ready codex/lab7-ready codex/lab8-manual-ready
+git push -u origin prep/lab4-ci
+git push origin prep/lab5-delivery prep/lab6-static-analysis prep/lab7-testing prep/lab8-migrations
 # dev/prod уже могут существовать. Сначала проверить remote и прочитать BRANCH_UPDATE_RU.md.
 git log --oneline --all -8
 ```
 
-Если dev/prod ещё нет: `git branch dev codex/lab4-ready`, затем аналогично prod и
+Если dev/prod ещё нет: `git branch dev prep/lab4-ci`, затем аналогично prod и
 `git push origin dev prod`. Существующие ветки обновлять только обычным PR/merge.
 Не переносить итоговую feature/labs4-8-preparation в DEV при выполнении ЛР4.
 
 В TeamCity создать проект From repository URL `https://github.com/VladislavG32/stockflow.git`.
 Если доступно обнаружение Kotlin DSL — выбрать `.teamcity/settings.kts`. Иначе создать
-пустой проект, VCS root Settings на `refs/heads/codex/lab4-ready`, включить Versioned
+пустой проект, VCS root Settings на `refs/heads/prep/lab4-ci`, включить Versioned
 Settings → Kotlin → использовать существующие настройки из VCS (не перезаписать
 репозиторий сгенерированными пустыми настройками). Settings root без feature branchSpec.
 В build settings выбрать Always use current settings; не загружать настройки из
@@ -101,7 +101,7 @@ TEST-agent требуется начиная с доставки ЛР5; ника
 В `01 Verify all branches` запустить dev, prod и feature-ветку от lab4-ready:
 
 ```powershell
-git branch feature/lab4-ci codex/lab4-ready
+git branch feature/lab4-ci prep/lab4-ci
 git push -u origin feature/lab4-ci
 ```
 

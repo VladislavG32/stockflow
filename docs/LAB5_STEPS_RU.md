@@ -6,7 +6,7 @@
 вместе с сохранённой PostgreSQL, функциональное изменение через feature → PR →
 реальное одобрение другого человека → DEV → успешная доставка. Самоодобрение не подходит.
 Подготовлены compose.agent, SSH-скрипты, release override и фильтр «Нулевой остаток».
-Контрольная ветка `codex/lab5-ready`; схема всё ещё ЛР3.
+Контрольная ветка `prep/lab5-delivery`; схема всё ещё ЛР3.
 
 ## 1 Агент TEST и прямая связь с CI Linux
 
@@ -98,7 +98,7 @@ Windows PowerShell, dev ещё на результате ЛР4:
 Set-Location D:\StockFlow
 git fetch origin
 git switch -c feature/lab5-zero-stock origin/dev
-git merge --ff-only codex/lab5-ready
+git merge --ff-only prep/lab5-delivery
 git push -u origin feature/lab5-zero-stock
 ```
 
@@ -114,7 +114,7 @@ Require approvals 1, запрет force pushes. Для личного публи
 с преподавателем допустимый порядок — это остающееся внешнее действие.
 
 В TeamCity сначала сохранить зелёный Verify feature. После реального approve выполнить
-merge PR. Настройки TeamCity переключить на codex/lab5-ready: появится Stage.
+merge PR. Настройки TeamCity переключить на prep/lab5-delivery: появится Stage.
 Ветка build source остаётся dev. Дождаться Verify → Publish → Stage.
 
 ## 4 Проверка доставки и данных
