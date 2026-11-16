@@ -42,7 +42,7 @@ prefer-identity/prefer-text-field/prefer-bigint-over-int: типы выбран�
 
 ## Два разных изменения
 
-Первая контрольная ветка `codex/lab8-manual-ready`: только `0001_receipt_price.sql`.
+Первая контрольная ветка `prep/lab8-migrations`: только `0001_receipt_price.sql`.
 Цена в копейках, nullable. Старое поступление8 не превращается в поступление с ценой0.
 5 единиц по12345 коп. →61725 коп. В API отсутствующая цена по умолчанию NULL.
 Остаток считается только из количества, не стоимости. CHECK диапазона добавляется
@@ -63,12 +63,12 @@ Windows, подготовить feature от DEV ЛР7:
 Set-Location D:\StockFlow
 git fetch origin
 git switch -c feature/lab8-price origin/dev
-git merge --ff-only codex/lab8-manual-ready
+git merge --ff-only prep/lab8-migrations
 git push -u origin feature/lab8-price
 ```
 
 Если история разошлась после PR merge, сделать обычный merge с проверкой diff.
-TeamCity Settings root выбрать codex/lab8-manual-ready, Always current settings.
+TeamCity Settings root выбрать prep/lab8-migrations, Always current settings.
 Verify feature должен собрать образы на CI, затем Acceptance того же SHA
 должен проверить цену и PostgreSQL на TEST.
 Скачать checks/schema.sql и checks/migrations.txt успешного Acceptance build в reference/
