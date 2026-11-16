@@ -113,7 +113,7 @@ df -h /
 CI Linux, из отдельного clone (не рабочего каталога приложения):
 
 ```bash
-git clone -b codex/lab4-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
+git clone -b prep/lab4-ci https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
 cd ~/stockflow-ci-config
 sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci
 cp infra/teamcity/linux.env.example /opt/stockflow-ci/teamcity.env
@@ -171,7 +171,7 @@ ssh -N -L 8111:192.168.56.14:8111 ubuntu@192.168.56.14
 На TEST, отдельный checkout конфигурации из ЛР4/5, не ~/stockflow рабочего приложения:
 
 ```bash
-git clone -b codex/lab4-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
+git clone -b prep/lab4-ci https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
 cd ~/stockflow-ci-config
 sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci
 cp infra/teamcity/linux.env.example /opt/stockflow-ci/teamcity.env
