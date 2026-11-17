@@ -1,4 +1,5 @@
 import type { Material } from "./types";
+import { matchesStockFilter } from "./inventory";
 
 export type MaterialSort = "name" | "code" | "balance" | "recommended";
 
@@ -14,7 +15,7 @@ export function materialView(
   return materials.filter((item) =>
     [item.name, item.code, item.category, item.unit].some((value) => value.toLocaleLowerCase("ru-RU").includes(search)) &&
     (!category || item.category === category) &&
-    (!stockFilter || (stockFilter === "low" ? item.shortage : !item.shortage)),
+    matchesStockFilter(item.balance, item.shortage, stockFilter),
   ).sort((a, b) => {
     const difference = sort === "balance" ? a.balance - b.balance
       : sort === "recommended" ? b.recommended - a.recommended

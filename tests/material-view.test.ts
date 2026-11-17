@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { materialView } from "../src/lib/material-view";
+import { matchesStockFilter } from "../src/lib/inventory";
 import type { Material } from "../src/lib/types";
 
 const materials: Material[] = [
@@ -8,6 +9,22 @@ const materials: Material[] = [
   { id: 2, code: "М-2", name: "Болт", category: "Крепёж", unit: "шт.", balance: 0, minimumStock: 0, targetStock: 0, shortage: false, recommended: 0 },
   { id: 3, code: "М-1", name: "Анкер", category: "Крепёж", unit: "шт.", balance: 10, minimumStock: 10, targetStock: 20, shortage: false, recommended: 0 },
 ];
+
+test("Нулевой остаток независим от минимума и сочетается с поиском и сортировкой", () => {
+  const rows = [...materials, { ...materials[0], id: 4, code: "М-20", balance: 0 }];
+  assert.deepEqual(materialView(rows, "", "", "empty", "code").map(x => x.id), [2, 4]);
+  assert.deepEqual(materialView(rows, " БОЛТ ", "Крепёж", "empty", "balance").map(x => x.id), [2]);
+  assert.equal(materialView(rows, "кабель", "Крепёж", "empty", "name").length, 0);
+  assert.deepEqual(materialView([], "", "", "empty", "name"), []);
+  assert.deepEqual(rows.map(x => x.id), [1, 2, 3, 4]);
+  for (const shortage of [true, false]) {
+    assert.equal(matchesStockFilter(0, shortage, "empty"), true);
+    for (const balance of [0.01, 1, -1]) assert.equal(matchesStockFilter(balance, shortage, "empty"), false);
+    assert.equal(matchesStockFilter(0, shortage, "low"), shortage);
+    assert.equal(matchesStockFilter(0, shortage, "normal"), !shortage);
+    assert.equal(matchesStockFilter(0, shortage, ""), true);
+  }
+});
 
 test("Поиск нормализует пробелы/регистр и сочетается с категорией и запасом", () => {
   assert.deepEqual(materialView(materials, "  КАБ  ", "Электрика", "low", "name").map(x => x.id), [1]);

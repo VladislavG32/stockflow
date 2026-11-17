@@ -1,0 +1,10 @@
+# TEST: /opt/stockflow-ci/ssh/config. Заполнить после проверки VM и fingerprint.
+Host stockflow-stage
+  HostName SET_CONFIRMED_STAGE_ADDRESS
+  User SET_CONFIRMED_SSH_USER
+  IdentityFile /root/.ssh/id_ed25519
+  StrictHostKeyChecking yes
+  UserKnownHostsFile /root/.ssh/known_hosts
+  ConnectTimeout 10
+  ServerAliveInterval 15
+  ServerAliveCountMax 3

@@ -1,5 +1,11 @@
 # Документация StockFlow
 
+Текущая работа после merge PR №1: [ЛР №5 и действия после запуска VM](LAB5_STEPS_RU.md),
+[локальные проверки](LAB5_LOCAL_VALIDATION_RU.md). TeamCity ранее обнаружен на TEST
+`http://192.168.56.11:8111`; старые примеры отдельной CI VM не применять.
+Publish и Stage автоматически не запускаются. Ссылки ниже на подготовку PR №1 являются историческими.
+Черновик отчёта: [PDF](reports/StockFlow_Lab5_Draft.pdf) и [редактируемый текст](reports/StockFlow_Lab5_Draft.md).
+
 Формат исправленной передачи CI-артефактов и отключённая автоматика Publish:
 [CI_BUNDLE_FORMAT_RU](CI_BUNDLE_FORMAT_RU.md). Это изменение инфраструктуры перед
 ЛР №5, без запуска Publish/Deploy и без изменения глобального лимита TeamCity.
