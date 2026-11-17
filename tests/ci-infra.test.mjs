@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { join, resolve } from "node:path";
@@ -155,3 +155,66 @@ test("Publish отвергает feature без обращения к Docker Hub
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Публикация разрешена только dev\/prod/);
 });
+
+function publishFixture(mode, run) {
+  const dir = mkdtempSync(join(tmpdir(), "stockflow-publish-test-"));
+  const unix = dir.replaceAll("\\", "/");
+  try {
+    mkdirSync(join(dir, "scripts/ci"), { recursive: true });
+    for (const name of ["publish.sh", "release-lib.sh"]) {
+      writeFileSync(join(dir, "scripts/ci", name), read(`scripts/ci/${name}`));
+    }
+    writeFileSync(join(dir, "mock-env"), `
+git() { printf '%s\\n' "$MOCK_REVISION"; }
+bash() {
+  case "$1" in
+    scripts/ci/preflight.sh|scripts/ci/load-bundle.sh) return 0;;
+    *) command bash "$@";;
+  esac
+}
+docker() {
+  case "$1" in
+    login) cat >/dev/null;;
+    tag|push|pull) return 0;;
+    image)
+      local alias=stockflow-ci-runner digest="$MOCK_APP_DIGEST"
+      if [[ "$3" == *-migrator ]]; then alias=stockflow-ci-migrator; digest="$MOCK_MIGRATOR_DIGEST"; fi
+      printf '%s@sha256:%s\\n' "$alias" "$digest"
+      # Так Docker отвечал старому Publish в реальном запуске.
+      [[ "$5" != '{{index .RepoDigests 0}}' ]] || return 0
+      if [[ "$MOCK_MODE" != missing ]]; then
+        [[ "$MOCK_MODE" != malformed ]] || digest=invalid
+        printf '%s@sha256:%s\\n' "$IMAGE_REPO" "$digest"
+      fi
+      if [[ "$MOCK_MODE" == ambiguous ]]; then printf '%s@sha256:%s\\n' "$IMAGE_REPO" "$MOCK_OTHER_DIGEST"; fi
+      ;;
+    *) return 99;;
+  esac
+}
+export -f git bash docker
+`);
+    const result = spawnSync(bash, ["scripts/ci/publish.sh"], {
+      cwd: dir, encoding: "utf8", timeout: 15000,
+      env: { ...process.env, BASH_ENV: `${unix}/mock-env`, MOCK_REVISION: "1".repeat(40),
+        MOCK_APP_DIGEST: "a".repeat(64), MOCK_MIGRATOR_DIGEST: "b".repeat(64), MOCK_OTHER_DIGEST: "c".repeat(64), MOCK_MODE: mode,
+        CI_BRANCH: "dev", IMAGE_REPO: "training/stockflow", DOCKERHUB_USER: "training", DOCKERHUB_TOKEN: "not-a-credential" },
+    });
+    run(result, join(dir, "artifacts/release.env"));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
+test("Publish записывает Docker Hub digest, когда первым остался локальный CI digest", () => {
+  publishFixture("valid", (result, file) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(read(file), `APP_IMAGE=training/stockflow@sha256:${"a".repeat(64)}\nMIGRATOR_IMAGE=training/stockflow@sha256:${"b".repeat(64)}\nRELEASE_SHA=${"1".repeat(40)}\n`);
+  });
+});
+
+for (const mode of ["missing", "ambiguous", "malformed"]) {
+  test(`Publish не создаёт release.env при неверном Docker Hub digest: ${mode}`, () => {
+    publishFixture(mode, (result, file) => {
+      assert.notEqual(result.status, 0);
+      assert.equal(existsSync(file), false);
+    });
+  });
+}

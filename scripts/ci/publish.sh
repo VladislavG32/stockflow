@@ -5,6 +5,7 @@ set -Eeuo pipefail
 CI_BRANCH=${CI_BRANCH#refs/heads/}
 case "$CI_BRANCH" in dev|prod) ;; *) echo 'Публикация разрешена только dev/prod' >&2; exit 1;; esac
 [[ "$IMAGE_REPO" =~ ^[a-z0-9_-]+/[a-z0-9_-]+$ ]] || exit 1
+source scripts/ci/release-lib.sh
 sha=$(git rev-parse HEAD)
 tag="$CI_BRANCH-$sha"
 bash scripts/ci/preflight.sh build
@@ -23,8 +24,9 @@ for target in runner migrator; do
   suffix=''; [[ "$target" != migrator ]] || suffix='-migrator'
   docker push "$IMAGE_REPO:$tag$suffix"
   docker pull "$IMAGE_REPO:$tag$suffix"
-  digest=$(docker image inspect "$IMAGE_REPO:$tag$suffix" --format '{{index .RepoDigests 0}}')
-  [[ "$digest" =~ @sha256:[a-f0-9]{64}$ ]] || exit 1
+  # После docker load первым может оставаться digest локального CI-репозитория.
+  # В release.env допускается только репозиторий, в который выполнен push/pull.
+  digest=$(docker image inspect "$IMAGE_REPO:$tag$suffix" --format '{{range .RepoDigests}}{{println .}}{{end}}' | select_repo_digest "$IMAGE_REPO")
   if [[ "$target" == runner ]]; then app="$digest"; else migrator="$digest"; fi
 done
 mkdir -p artifacts

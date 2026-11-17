@@ -3,6 +3,17 @@
 set -Eeuo pipefail
 fail() { echo "$*" >&2; exit 1; }
 valid_digest() { [[ "$1" =~ ^[a-z0-9_-]+/[a-z0-9_-]+@sha256:[a-f0-9]{64}$ ]]; }
+select_repo_digest() {
+  local repo=$1 candidate selected=
+  while IFS= read -r candidate; do
+    [[ "${candidate%@*}" == "$repo" ]] || continue
+    valid_digest "$candidate" || fail 'Неверный digest опубликованного образа'
+    [[ -z "$selected" || "$selected" == "$candidate" ]] || fail 'Неоднозначный digest репозитория'
+    selected=$candidate
+  done
+  [[ -n "$selected" ]] || fail 'Нет digest опубликованного репозитория'
+  printf '%s\n' "$selected"
+}
 read_release() {
   local file=$1 line key value seen='|'
   [[ -f "$file" ]] || fail 'Нет release.env'
