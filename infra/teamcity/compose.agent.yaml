@@ -15,12 +15,13 @@ services:
     volumes:
       - agent_conf:/data/teamcity_agent/conf
       - /var/run/docker.sock:/var/run/docker.sock
-      # Одинаковые пути нужны вложенным docker run: mount выполняет Docker хоста.
-      - /opt/buildagent/work:/opt/buildagent/work
-      - /opt/buildagent/temp:/opt/buildagent/temp
-      - /opt/buildagent/system:/opt/buildagent/system
-      - /opt/buildagent/tools:/opt/buildagent/tools
-      - /opt/buildagent/plugins:/opt/buildagent/plugins
+      # Отдельные каталоги хоста: build-agent на TEST использует /opt/buildagent.
+      # Stage выполняет Git/SSH из контейнера; вложенные docker run здесь не нужны.
+      - /opt/stockflow-test-agent/work:/opt/buildagent/work
+      - /opt/stockflow-test-agent/temp:/opt/buildagent/temp
+      - /opt/stockflow-test-agent/system:/opt/buildagent/system
+      - /opt/stockflow-test-agent/tools:/opt/buildagent/tools
+      - /opt/stockflow-test-agent/plugins:/opt/buildagent/plugins
       - /opt/stockflow-ci/ssh:/root/.ssh:ro
 volumes:
   agent_conf:

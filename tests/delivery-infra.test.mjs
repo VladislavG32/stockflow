@@ -12,6 +12,14 @@ const oldImage = `sha256:${"3".repeat(64)}`, newImage = `sha256:${"4".repeat(64)
 const app = `training/stockflow@sha256:${"5".repeat(64)}`, migrator = `training/stockflow@sha256:${"6".repeat(64)}`;
 const read = path => readFileSync(path, "utf8");
 
+test("TEST-agent не разделяет рабочие каталоги с build-agent на одном хосте", () => {
+  const compose = read("infra/teamcity/compose.agent.yaml");
+  for (const dir of ["work", "temp", "system", "tools", "plugins"]) {
+    assert.ok(compose.includes(`/opt/stockflow-test-agent/${dir}:/opt/buildagent/${dir}`));
+    assert.ok(!compose.includes(`/opt/buildagent/${dir}:/opt/buildagent/${dir}`));
+  }
+});
+
 function fixture(run) {
   const dir = mkdtempSync(join(tmpdir(), "stockflow-delivery-"));
   const unix = dir.replaceAll("\\", "/");
