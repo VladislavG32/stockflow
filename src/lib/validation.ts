@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_UNIT_PRICE_KOPECKS } from "./inventory";
 
 // Русские сообщения по умолчанию используются и для ошибок типа данных/обязательных полей.
 z.config(z.locales.ru());
@@ -77,6 +78,7 @@ export const receiptSchema = z
       (value) => value > 0,
       "Количество должно быть больше нуля",
     ),
+    unitPriceKopecks: z.number().int().min(0).max(MAX_UNIT_PRICE_KOPECKS).nullable().default(null),
     receivedOn: calendarDate,
     note: z.string().trim().max(500, "Не более 500 символов").default(""),
   })

@@ -19,6 +19,20 @@ export function csvCell(value: string | number) {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
+export const MAX_UNIT_PRICE_KOPECKS = 2_147_483_647;
+
+// Максимальное количество 1 000 000: произведение двух допустимых значений
+// укладывается в безопасный диапазон целых JavaScript.
+export function receiptCostKopecks(quantity: number, unitPriceKopecks: number | null) {
+  return unitPriceKopecks === null ? null : quantity * unitPriceKopecks;
+}
+
+export function formatKopecks(value: number | null) {
+  if (value === null) return "Не указана";
+  const rubles = Math.floor(value / 100).toLocaleString("ru-RU");
+  return `${rubles},${String(value % 100).padStart(2, "0")} ₽`;
+}
+
 /** Фильтр ЛР5 помогает выделить пустые позиции из общего дефицита.
  * balance — остаток материала, shortage — результат расчёта дефицита.
  * Возвращает true для строки, которую нужно показать; пустой фильтр показывает всё.
