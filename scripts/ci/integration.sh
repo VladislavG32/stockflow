@@ -44,9 +44,9 @@ database_identity=$("${ci[@]}" exec -T db psql -X -U stockflow_ci -d stockflow_c
 printf 'SHA %s | проект %s | PostgreSQL 17 | БД stockflow_ci | tmpfs\n' "$sha" "$project" \
   | tee artifacts/integration-environment.txt
 "${ci[@]}" up -d --no-build --wait --wait-timeout 120 app
-"${ci[@]}" run --rm -T --no-deps tests > artifacts/integration.junit.xml \
-  2> >(tee artifacts/integration.log >&2)
+"${ci[@]}" run --rm -T --no-deps tests 2> >(tee artifacts/integration.log >&2) \
+  | bash scripts/ci/junit.sh > artifacts/integration.junit.xml
 
 "${ci[@]}" up -d --no-deps --force-recreate --no-build --wait --wait-timeout 90 app
 "${ci[@]}" run --rm -T --no-deps -e STOCKFLOW_INTEGRATION_PHASE=persistence tests \
-  > artifacts/persistence.junit.xml 2> >(tee artifacts/persistence.log >&2)
+  2> >(tee artifacts/persistence.log >&2) | bash scripts/ci/junit.sh > artifacts/persistence.junit.xml
