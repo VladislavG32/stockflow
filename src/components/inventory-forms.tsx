@@ -3,11 +3,12 @@
 import type { DashboardData } from "@/lib/types";
 import { RecordForm, type Field } from "./record-form";
 
-const materialFields: Field[] = [
-  { name: "code", label: "Код материала", maxLength: 40, placeholder: "Например, МАТ-001" },
+export const materialFields = [
+  { name: "code", label: "Код класса материала", maxLength: 40, placeholder: "Например, МАТ-001" },
   { name: "name", label: "Наименование", maxLength: 160, placeholder: "Например, Кабель ВВГ" },
-  { name: "category", label: "Категория", maxLength: 100, placeholder: "Например, Электрика" },
-  { name: "unit", label: "Единица измерения", maxLength: 20, placeholder: "шт., м, кг" },
+  { name: "category", label: "Группа", maxLength: 100, placeholder: "Например, Электрика" },
+  { name: "unit", label: "Основная единица измерения", maxLength: 20, placeholder: "шт." },
+  { name: "additionalUnits", label: "Дополнительные единицы через запятую", maxLength: 220, optional: true, commaSeparated: true },
   {
     name: "minimumStock",
     label: "Минимальный запас",
@@ -24,7 +25,7 @@ const materialFields: Field[] = [
     max: 1000000,
     defaultValue: 0,
   },
-];
+] satisfies (Field & { name: keyof DashboardData["materials"][number] })[];
 
 // details раскрывает форму без отдельного окна; все поля доступны с клавиатуры.
 export function InventoryForms({
@@ -57,6 +58,8 @@ export function InventoryForms({
             endpoint="/api/suppliers"
             fields={[
               { name: "name", label: "Название", maxLength: 160 },
+              { name: "taxId", label: "ИНН", maxLength: 12, optional: true },
+              { name: "legalAddress", label: "Юридический адрес", maxLength: 250, optional: true },
               {
                 name: "contact",
                 label: "Контактные данные",

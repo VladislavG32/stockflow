@@ -23,10 +23,15 @@ export const materialSchema = z
     name: text(160),
     category: text(100),
     unit: text(20),
+    additionalUnits: z.array(text(20)).max(10).default([]),
     minimumStock: stock,
     targetStock: stock,
   })
   .strict()
+  .refine(({ unit, additionalUnits }) => {
+    const units = [unit, ...additionalUnits].map((value) => value.toLocaleLowerCase("ru-RU"));
+    return new Set(units).size === units.length;
+  }, { message: "Единицы измерения должны различаться", path: ["additionalUnits"] })
   .refine((value) => value.targetStock >= value.minimumStock, {
     message: "Целевой запас должен быть не меньше минимального",
     path: ["targetStock"],
@@ -44,6 +49,8 @@ export const supplierSchema = z
   .object({
     name: text(160),
     contact: z.string().trim().max(200, "Не более 200 символов").default(""),
+    taxId: z.string().trim().regex(/^(?:\d{10}|\d{12})?$/, "ИНН должен содержать 10 или 12 цифр").default(""),
+    legalAddress: z.string().trim().max(250).default(""),
   })
   .strict();
 

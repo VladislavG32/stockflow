@@ -5,13 +5,20 @@ export type Material = {
   name: string;
   category: string;
   unit: string;
+  additionalUnits: string[];
   minimumStock: number;
   targetStock: number;
   balance: number;
   shortage: boolean;
   recommended: number;
 };
-export type Supplier = { id: number; name: string; contact: string };
+export type Supplier = {
+  id: number;
+  name: string;
+  contact: string;
+  taxId: string;
+  legalAddress: string;
+};
 export type Receipt = {
   id: number;
   number: string;

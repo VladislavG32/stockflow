@@ -9,7 +9,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:integration": "tsx scripts/integration.ts",
+    "test:integration": "node --import tsx --test --test-reporter=spec --test-reporter-destination=stderr --test-reporter=junit --test-reporter-destination=stdout scripts/integration.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "tsx scripts/seed.ts",

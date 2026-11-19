@@ -13,7 +13,7 @@ export function materialView(
 ) {
   const search = query.trim().toLocaleLowerCase("ru-RU");
   return materials.filter((item) =>
-    [item.name, item.code, item.category, item.unit].some((value) => value.toLocaleLowerCase("ru-RU").includes(search)) &&
+    [item.name, item.code, item.category, item.unit, ...item.additionalUnits].some((value) => value.toLocaleLowerCase("ru-RU").includes(search)) &&
     (!category || item.category === category) &&
     matchesStockFilter(item.balance, item.shortage, stockFilter),
   ).sort((a, b) => {

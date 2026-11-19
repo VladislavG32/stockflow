@@ -3,6 +3,8 @@
 import type { Material, Receipt, Supplier } from "@/lib/types";
 import { Empty, Panel } from "./ui";
 import { RecordForm } from "./record-form";
+import { materialFields } from "./inventory-forms";
+import type { ReactNode } from "react";
 
 export function MaterialTable({
   rows,
@@ -24,7 +26,7 @@ export function MaterialTable({
             <thead>
               <tr>
                 <th scope="col">Материал</th>
-                <th scope="col">Категория</th>
+                <th scope="col">Группа</th>
                 <th scope="col">Минимум / цель</th>
                 <th scope="col">Настройка</th>
               </tr>
@@ -35,7 +37,7 @@ export function MaterialTable({
                   <td>
                     <strong>{item.name}</strong>
                     <span className="item-code">
-                      {item.code} · {item.unit}
+                      {item.code} · {[item.unit, ...item.additionalUnits].join(", ")}
                     </span>
                     <span className={`stock-badge${item.shortage ? " warning-text" : ""}`}>
                       {item.balance === 0 ? "Нет в наличии" : item.shortage ? "Ниже минимума" : "В наличии"}
@@ -47,31 +49,17 @@ export function MaterialTable({
                   </td>
                   <td>
                     <details className="limits-editor">
-                      <summary>Пороги</summary>
+                      <summary>Изменить</summary>
                       <RecordForm
-                        key={`${item.minimumStock}-${item.targetStock}`}
+                        key={JSON.stringify(materialFields.map(({ name }) => item[name]))}
                         compact
                         method="PATCH"
                         endpoint={`/api/materials/${item.id}`}
                         onSaved={onSaved}
-                        fields={[
-                          {
-                            name: "minimumStock",
-                            label: "Минимум",
-                            type: "number",
-                            min: 0,
-                            max: 1000000,
-                            defaultValue: item.minimumStock,
-                          },
-                          {
-                            name: "targetStock",
-                            label: "Цель",
-                            type: "number",
-                            min: 0,
-                            max: 1000000,
-                            defaultValue: item.targetStock,
-                          },
-                        ]}
+                        fields={materialFields.map((field) => ({
+                          ...field,
+                          defaultValue: field.name === "additionalUnits" ? item.additionalUnits.join(", ") : item[field.name],
+                        }))}
                       />
                     </details>
                   </td>
@@ -86,18 +74,23 @@ export function MaterialTable({
         </Empty>
       )}
       <div className="panel-footer">
-        Показано: {rows.length} · пороги можно изменить для каждого материала
+        Показано материалов: {rows.length}
       </div>
     </Panel>
   );
 }
 
-export function SupplierList({ rows }: { rows: Supplier[] }) {
+export function SupplierList({ rows, materialAction, materialCount }: {
+  rows: Supplier[];
+  materialAction: ReactNode;
+  materialCount?: number;
+}) {
   return (
     <Panel
       id="suppliers"
       title="Поставщики"
       subtitle="Справочник партнёров склада"
+      action={materialAction}
     >
       {rows.length ? (
         <ul className="supplier-list" tabIndex={0} aria-label="Список поставщиков">
@@ -106,6 +99,8 @@ export function SupplierList({ rows }: { rows: Supplier[] }) {
               <span className="supplier-avatar">{item.name.slice(0, 1)}</span>
               <div>
                 <strong>{item.name}</strong>
+                {item.taxId && <span>ИНН {item.taxId}</span>}
+                {item.legalAddress && <span>{item.legalAddress}</span>}
                 <span>{item.contact || "Контакт не указан"}</span>
               </div>
             </li>
@@ -116,17 +111,21 @@ export function SupplierList({ rows }: { rows: Supplier[] }) {
           Поставщики не найдены. Добавьте партнёра или измените поиск.
         </Empty>
       )}
-      <div className="panel-footer">Показано поставщиков: {rows.length}</div>
+      <div className="panel-footer">
+        {materialCount !== undefined && <span>Поставщиков материала: {materialCount} · </span>}
+        Показано поставщиков: {rows.length}
+      </div>
     </Panel>
   );
 }
 
-export function ReceiptTable({ rows }: { rows: Receipt[] }) {
+export function ReceiptTable({ rows, materialAction }: { rows: Receipt[]; materialAction: ReactNode }) {
   return (
     <Panel
       id="receipts"
       title="Поступления"
       subtitle="Журнал зарегистрированных операций"
+      action={materialAction}
     >
       {rows.length ? (
         <div className="table-scroll" role="region" aria-label="Прокручиваемый журнал поступлений" tabIndex={0}>

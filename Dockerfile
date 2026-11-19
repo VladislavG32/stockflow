@@ -9,6 +9,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+FROM dependencies AS test-tools
+COPY tsconfig.json ./
+COPY scripts/integration.ts ./scripts/integration.ts
+COPY src/lib/dashboard-view.ts src/lib/inventory.ts src/lib/material-view.ts src/lib/types.ts ./src/lib/
+USER node
+
 # Мигратор — отдельный одноразовый сервис, запускаемый Compose перед приложением.
 FROM node:24-bookworm-slim AS migrator
 WORKDIR /app
