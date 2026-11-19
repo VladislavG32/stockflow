@@ -1,124 +1,57 @@
-> Подготовительный сценарий будущего этапа, не текущая инструкция перед merge. ЛР №5–8 в этой задаче не выполняются. Сначала завершить [проверку PR №1](PRE_MERGE_PR1_RU.md); актуальные ветки — в [карте](BRANCHES_RU.md).
+# Лабораторная работа №6. Статический анализ
 
-# Лабораторная работа 6 Статический анализ
+В Verify используются два вида анализа исходного кода. ESLint с `eslint-config-next`
+проверяет JavaScript, TypeScript, React и Next.js, включая Node.js-скрипты проекта.
+Gitleaks 8.30.1 ищет секреты по встроенным правилам и учебному правилу из
+`.gitleaks.toml`. Semgrep поддерживает SAST для JavaScript/TypeScript и правил
+фреймворков. SonarQube Server поддерживает анализ качества JavaScript/TypeScript,
+но требует сервер и сканер. Для двух выбранных видов анализа достаточно
+существующего ESLint и одного контейнера Gitleaks.
 
-## Цель и методичка
+## Шаги Verify
 
-Выбрать минимум два вида анализа: качество, безопасность кода, поиск секретов.
-На максимальной критичности сборка должна прерываться. Подготовлены два требуемых
-вида: ESLint (качество) и Gitleaks (секреты). TypeScript — дополнительная проверка
-контрактов, не анализ безопасности. Контрольная ветка `prep/lab6-static-analysis`.
+1. **Static Analysis — ESLint** проверяет ресурсы агента, устанавливает зависимости
+   через `npm ci` в Node 24 и выполняет `npm run lint`. ESLint имеет уровни
+   warning и error. Сборка прерывается при любой ошибке, а `--max-warnings=0`
+   также блокирует любое предупреждение. BLOCKER в задании обозначает порог
+   остановки сборки, у ESLint уровень с таким названием отсутствует.
+2. **Secret Scan — Gitleaks** проверяет отслеживаемые файлы текущего коммита
+   из `git archive HEAD`. История Git, локальный `.env` и артефакты в снимок
+   не попадают. При необходимости история проверяется отдельно командой
+   `gitleaks git` с теми же правилами и маскированием. Любая находка даёт код 1,
+   а любой ненулевой код останавливает Verify. Режим `--redact=100` скрывает
+   найденное значение в журнале и JSON.
+3. **Linux CI: проверки, сборка и архив образов** повторно использует
+   `node_modules` в том же чистом checkout. Выполняет typecheck, инфраструктурные
+   и модульные тесты, production build и подготавливает архивы образов.
 
-## Выбор инструментов
+TeamCity останавливает последовательность шагов при ненулевом коде. Журнал
+ESLint и JSON Gitleaks доступны в `checks/eslint.log` и `checks/gitleaks.json`.
+Автоматические триггеры Publish и Stage отключены.
 
-| Инструмент | Что проверяет | Решение |
-|---|---|---|
-| ESLint + eslint-config-next | React hooks, ошибки Next/TS, неиспользуемые переменные | Уже принят проектом; используем без отключения правил |
-| Gitleaks 8.30.1 | Токены, пароли, ключи в Git history | Добавлен, не требует аккаунта/платного сервиса |
-| Semgrep CE | Потенциальные опасные конструкции TypeScript, taint/rules | Исследован; необязательный третий инструмент, пока не встроен |
-| tsc | Типы и контракт маршрутов | Дополнение, не заменяет ни один из двух видов |
+## Воспроизводимая проверка
 
-Semgrep полезен, но требует отбора правил и анализа false positives; для небольшой
-учебной системы два вида уже покрыты ESLint и Gitleaks. Не заявляем, что проверили
-все классы уязвимостей. SQL анализ отдельно добавляется в ЛР8.
-
-## Критичность и остановка
-
-У ESLint нет уровня BLOCKER: есть warning/error. Для этого проекта ЛЮБОЙ error
-и даже warning блокирует (`--max-warnings=0`), то есть порог строже минимального.
-У Gitleaks нет универсальной шкалы CRITICAL: любая находка секрета блокирует,
-exit code 1. Ошибка самого сканера тоже блокирует (иной ненулевой код).
-`set -Eeuo pipefail` не позволяет скрыть ошибку за tee или продолжить публикацию.
-Gitleaks `--redact` скрывает значения в JSON/логе, но сохраняет путь/правило.
-
-## Реальное выполнение
-
-На CI Linux по SSH, отдельный clone конфигурации соответствующей ветки:
+На Linux-агенте с Docker из корня чистого checkout:
 
 ```bash
-cd ~/stockflow-ci-config
-git fetch origin
-git switch --detach origin/prep/lab6-static-analysis
-bash scripts/ci/preflight.sh build
-docker run --rm --memory=2300m -v "$PWD:$PWD" -w "$PWD" node:24-bookworm-slim bash -ec 'npm ci; npm run lint; npm run typecheck'
+bash scripts/ci/lint.sh
 bash scripts/ci/static.sh
 bash scripts/demo/secret.sh
 ```
 
-Первый скрипт проверяет историю git стандартными правилами и собственным узким
-правилом безопасной демонстрации. Ожидается no leaks found и artifacts/gitleaks.json.
-Второй создаёт временный файл с `STOCKFLOW_DEMO_` и синтетическими символами,
-которые никогда не являются действующим секретом. Ожидается находка и exit=1
-именно сканера; сценарий проверяет её и завершается PASS. Файл удаляется автоматически.
-Не добавлять настоящий Docker Hub/GitHub token ради скриншота.
+Демонстрация создаёт синтетическую метку во временном каталоге и проверяет код 1,
+идентификатор правила и путь файла. Для проверки остановки Verify на ESLint
+добавьте в отдельной демонстрационной ветке временный TypeScript-файл:
 
-В TeamCity перевести Settings root на prep/lab6-static-analysis; вносить код через feature/PR
-из ЛР5. Verify на stockflow-build-agent запускает static.sh, npm lint/typecheck/tests/build
-и архивирует образы. TEST-agent выполняет только доставку Stage. Успешный
-DEV продолжает Publish/Stage; при любой ошибке зависимые конфигурации не стартуют.
-Скриншоты: правила eslint.config.mjs и .gitleaks.toml, реальный лог без секретов,
-artifacts/gitleaks.json, Build chain с запрещённым продолжением после ошибки.
-
-Для реальной неуспешной TeamCity-сборки качества создать временную feature-ветку
-от dev, добавить в TypeScript `const unusedTrainingVariable = 1;` в функцию,
-не использовать переменную, push. ESLint должен остановить Verify. Затем отдельным
-коммитом удалить строку: та же конфигурация проходит. Не сливать ошибочный коммит
-в dev/prod. После демонстрации можно удалить только свою временную ветку через GitHub.
-Нельзя придумывать красную/зелёную сборку или редактировать тест так, чтобы он падал.
-
-## Отчёты и ошибки
-
-Verify публикует artifacts/* в checks. В финальной версии туда входят SQL, JSON,
-coverage и лог интеграционного контура. Исторические ранние checkpoint могут
-публиковать каталог artifacts целиком; это структура хранения, а не иной анализ.
-
-Нет JSON: проверить код запуска и доступ к Docker. Exit 1 Gitleaks: посмотреть
-rule/file, отозвать реальный секрет, если обнаружен; не заносить широкое исключение.
-Синтетическая метка допускается только во временной demo, не в Git. Исторический
-секрет требует отзыва и отдельного решения; история ЛР1–3 не переписывается.
-429 при docker pull — docker login снаружи скрипта для Docker Hub лимитов, не секрет
-в команде. Нет Docker Engine — это непроведённая проверка, не успех.
-
-`npm audit` при подготовке выявил 9 проблем dev-зависимостей (4 moderate, 5 high),
-в основном цепочки drizzle-kit/eslint-config-next. Это отдельный dependency-аудит:
-Gitleaks/ESLint не проверяют CVE пакетов. Не применялся `npm audit fix --force`,
-который предлагал несовместимые откаты. До внешнего развёртывания повторить аудит
-и проверить безопасные обновления в отдельной fix-ветке. Подробности в статусе.
-
-## Вопросы и защита 5–7 минут
-
-1 минута — три вида анализа и почему выбраны два. 2 — реальные конфиги и пороги.
-1 — synthetic demo. 1–2 — Verify и остановленная доставка. 1 — интерпретация отчёта.
-Вопросы: почему tsc не security; что такое false positive; почему --redact;
-как найти секрет в истории; почему успешный lint не доказывает отсутствие уязвимостей.
-
-## Перенести подготовку через отдельный PR
-
-Windows PowerShell, после завершения предыдущей ЛР:
-
-```powershell
-Set-Location D:\StockFlow
-git fetch origin
-git switch -c feature/lab6-analysis origin/dev
-git merge prep/lab6-static-analysis
-git push -u origin feature/lab6-analysis
+```ts
+export function lab6Probe(value: any) { return value; }
 ```
 
-В GitHub открыть PR в dev, получить реальное review, merge. Повторить fetch.
-Для демонстрации PROD-ветки (без развёртывания реальной PROD VM):
+Ожидается ошибка `@typescript-eslint/no-explicit-any`. Проверьте в логе Verify,
+что последующие шаги пропущены. Демонстрационный коммит остаётся в отдельной ветке.
 
-```powershell
-git fetch origin
-git switch prod
-git merge --ff-only origin/dev
-git push origin prod
-```
-
-Доставка на PROD от этого не запускается. Все новые feature/fix создавайте от
-обновлённого dev, чтобы они наследовали CI-файлы и тесты. Исторические main/ветка
-ЛР3 не содержат новой инфраструктуры; их старый код не переписываем и не выдаём
-неподдерживаемую сборку за успешную. При расхождении истории ff-only остановится:
-разрешите историю обычным PR/merge, не force/reset.
-
-Инфраструктура: Linux CI из LINUX_CI_SETUP_RU.md; Windows только Git/SSH/браузер.
-Скриншот номера агента в build доказывает, где выполнялся анализ.
+Источники: [Next.js ESLint](https://nextjs.org/docs/app/api-reference/config/eslint),
+[ESLint CLI](https://eslint.org/docs/latest/use/command-line-interface.html),
+[Gitleaks 8.30.1](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1),
+[Semgrep](https://semgrep.dev/products/integrations/),
+[SonarQube](https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/languages/javascript-typescript-css).
