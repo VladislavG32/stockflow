@@ -30,6 +30,7 @@ export type Receipt = {
   quantity: number;
   unitPriceKopecks: number | null;
   totalCostKopecks: number | null;
+  documentReference: string | null;
   receivedOn: string;
   note: string;
 };

@@ -27,8 +27,8 @@ try {
   upgraded = new pg.Pool({ connectionString: connection.href });
 
   const journal = JSON.parse(await readFile("./drizzle/meta/_journal.json", "utf8"));
-  const previous = journal.entries.slice(0, 2);
-  assert.equal(previous.at(-1)?.tag, "0001_lab7_catalog_fields");
+  const previous = journal.entries.slice(0, -1);
+  assert.equal(previous.at(-1)?.tag, "0002_lab8_receipt_price");
   await cp("./drizzle", upgradeFolder, { recursive: true });
   await writeFile(join(upgradeFolder, "meta/_journal.json"), JSON.stringify({ ...journal, entries: previous }));
   await migrate(drizzle(upgraded), { migrationsFolder: upgradeFolder });
@@ -37,8 +37,8 @@ try {
       values ('HIST-1', 'Кабель', 'Электрика', 'м', '["рулон"]', 10, 20);
     insert into suppliers (name, tax_id, legal_address)
       values ('Поставщик', '7701234567', 'Москва');
-    insert into receipts (number, material_id, supplier_id, quantity, received_on, note)
-      values ('HIST-R1', 1, 1, 7, '2026-10-18', 'Историческая строка');
+    insert into receipts (number, material_id, supplier_id, quantity, received_on, note, unit_price_kopecks)
+      values ('HIST-R1', 1, 1, 7, '2026-10-18', 'Историческая строка', 995);
   `);
   const baseline = await upgraded.query(`
     select to_jsonb(receipts) as receipt, to_jsonb(materials) as material,
@@ -49,21 +49,21 @@ try {
   await migrate(drizzle(upgraded), { migrationsFolder: "./drizzle" });
   await migrate(drizzle(upgraded), { migrationsFolder: "./drizzle" });
   const current = await upgraded.query(`
-    select to_jsonb(receipts) - 'unit_price_kopecks' as receipt,
+    select to_jsonb(receipts) - 'document_reference' as receipt,
       to_jsonb(materials) as material, to_jsonb(suppliers) as supplier,
-      unit_price_kopecks, (select sum(quantity)::int from receipts where material_id = materials.id) as balance
+      document_reference, (select sum(quantity)::int from receipts where material_id = materials.id) as balance
     from receipts join materials on materials.id = receipts.material_id
     join suppliers on suppliers.id = receipts.supplier_id
   `);
-  assert.deepEqual(current.rows, [{ ...baseline.rows[0], unit_price_kopecks: null, balance: 7 }]);
+  assert.deepEqual(current.rows, [{ ...baseline.rows[0], document_reference: null, balance: 7 }]);
   const expected = readMigrationFiles({ migrationsFolder: "./drizzle" })
     .map(({ hash, folderMillis }) => ({ hash, created_at: String(folderMillis) }));
   for (const pool of [fresh, upgraded]) {
     const { rows: history } = await pool.query("select hash, created_at from drizzle.__drizzle_migrations order by id");
     assert.deepEqual(history, expected);
   }
-  console.log("Drizzle: чистая БД и обновление с 0001 имеют одинаковый журнал.");
-  console.log("Записи поступления, материала и поставщика сохранены. Историческая цена NULL, остаток 7.");
+  console.log("Drizzle: чистая БД и обновление с 0002 имеют одинаковый журнал.");
+  console.log("Исторические записи, цена 995 копеек и остаток 7 сохранены. Номер документа NULL.");
 } finally {
   await upgraded?.end();
   await fresh.end();

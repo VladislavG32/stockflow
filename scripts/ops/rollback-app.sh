@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 bash "$root/scripts/ci/preflight.sh" deploy
+expected_target=stage
 source "$root/scripts/ops/common.sh"
 APP_IMAGE=$(sed -n 's/^APP_IMAGE=//p' "$state/previous.env")
 previous_sha=$(sed -n 's/^RELEASE_SHA=//p' "$state/previous.env")

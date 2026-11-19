@@ -15,6 +15,7 @@ project {
     buildType(Acceptance)
     buildType(Publish)
     buildType(Stage)
+    buildType(Prod)
 }
 object Stage : BuildType({
     id("StockFlow_Stage")
@@ -24,11 +25,37 @@ object Stage : BuildType({
     params { param("env.CI_BRANCH", "%teamcity.build.vcs.branch.${DslContext.projectId.value}_Source%") }
     dependencies {
         snapshot(Publish) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
-        artifacts(Publish) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming" }
+        artifacts(Publish) { buildRule = sameChain(); cleanDestination = true; artifactRules = "release.env => incoming/release" }
+        snapshot(Acceptance) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Acceptance) { buildRule = sameChain(); artifactRules = "acceptance/reference/** => incoming/test" }
     }
-    steps { script { name = "TEST: доставка проверенных digest на STAGE"; scriptContent = "bash scripts/ci/deliver.sh stage" } }
+    steps { script { name = "STAGE: schema comparison, backup and automatic migration"; scriptContent = "bash scripts/ci/deliver-verified.sh stage" } }
     // До проверки VM доставка также запускается только вручную.
     triggers { finishBuildTrigger { enabled = false; buildType = "${DslContext.projectId.value}_StockFlow_Publish"; successfulOnly = true; branchFilter = "+:dev\n+:<default>" } }
+    artifactRules = "artifacts/verified/** => stage\nartifacts/deployment.log"
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
+})
+object Prod : BuildType({
+    id("StockFlow_Prod")
+    name = "04 Promote verified STAGE to PROD MANUAL"
+    maxRunningBuilds = 1
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source); branchFilter = "+:dev\n+:<default>" }
+    failureConditions { nonZeroExitCode = true }
+    params {
+        param("env.CI_BRANCH", "%teamcity.build.vcs.branch.${DslContext.projectId.value}_Source%")
+        param("env.PROD_RELEASE_SHA", "")
+        param("env.PROD_OPERATION", "plan")
+        param("env.PROD_PLAN", "")
+    }
+    dependencies {
+        artifacts(Stage) {
+            buildRule = lastSuccessful()
+            cleanDestination = true
+            artifactRules = "stage/** => incoming/stage"
+        }
+    }
+    steps { script { name = "PROD: verified STAGE, backup, restore rehearsal and promotion"; scriptContent = "bash scripts/ci/deliver-verified.sh prod" } }
+    artifactRules = "artifacts/deployment.log"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 object Source : GitVcsRoot({
@@ -57,7 +84,17 @@ object Verify : BuildType({
         script {
             id = "Lab8_SQL"
             name = "SQL Security — PostgreSQL migrations"
-            scriptContent = "bash scripts/ci/sql.sh"
+            scriptContent = """
+                set -eo pipefail
+                if [ -f scripts/ci/sql.sh ]; then
+                  bash scripts/ci/sql.sh
+                else
+                  verified=357d1eff485b5b4fd86a7a3704d9d9a643926859
+                  git cat-file -e "${'$'}verified:scripts/ci/sql.sh" ||
+                    git fetch --no-tags https://github.com/VladislavG32/stockflow.git "${'$'}verified"
+                  git show "${'$'}verified:scripts/ci/sql.sh" | bash
+                fi
+            """.trimIndent()
         }
         script {
             id = "Lab7_Unit"
@@ -104,7 +141,7 @@ object Acceptance : BuildType({
             watchChangesInDependencies = true
         }
     }
-    artifactRules = "artifacts/* => acceptance"
+    artifactRules = "artifacts/* => acceptance\nartifacts/reference/** => acceptance/reference"
     requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 object Publish : BuildType({

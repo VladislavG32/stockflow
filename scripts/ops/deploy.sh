@@ -2,9 +2,16 @@
 set -Eeuo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source "$root/scripts/ci/release-lib.sh"
-[[ "${1:-}" == stage ]] || fail 'ЛР5 допускает только stage'
+expected_target=${1:?stage or prod}
+[[ "$expected_target" == stage || "$expected_target" == prod ]] || fail 'Неизвестный стенд'
 export APP_IMAGE=${2:?} MIGRATOR_IMAGE=${3:?}
 release_sha=${4:?}
+reference=${5:-}
+operation=${6:-apply}
+approved_plan=${7:-}
+if [[ "$expected_target" == prod ]]; then
+  [[ -n "$reference" ]] || fail 'PROD требует проверенный артефакт схемы STAGE'
+fi
 valid_digest "$APP_IMAGE" && valid_digest "$MIGRATOR_IMAGE" || fail 'Требуются digest образов'
 [[ "${APP_IMAGE%@*}" == "${MIGRATOR_IMAGE%@*}" && "$release_sha" =~ ^[a-f0-9]{40}$ ]] || fail 'Неверный release'
 bash "$root/scripts/ci/preflight.sh" deploy
@@ -23,6 +30,9 @@ for image in "$APP_IMAGE" "$MIGRATOR_IMAGE"; do
   revision=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
   [[ "$revision" == "$release_sha" ]] || fail 'Образ другого snapshot'
 done
+if [[ -n "$reference" ]]; then
+  source "$root/scripts/ops/migrate-verified.sh" "$reference" "$operation" "$approved_plan"
+fi
 changed=0
 rollback() {
   code=$?
@@ -47,9 +57,12 @@ changed=1
 bash "$root/scripts/ops/wait-ready.sh" "${release[@]}"
 verify_app_image
 check_database
+if [[ -n "$reference" ]]; then
+  "${release[@]}" exec -T app node --input-type=module < "$root/scripts/ops/check-release-app.mjs"
+fi
 printf 'APP_IMAGE=%s\nRELEASE_SHA=%s\n' "$previous" "$previous_sha" > "$state/previous.env.tmp"
 mv "$state/previous.env.tmp" "$state/previous.env"
 printf 'APP_IMAGE=%s\nMIGRATOR_IMAGE=%s\nRELEASE_SHA=%s\n' "$APP_IMAGE" "$MIGRATOR_IMAGE" "$release_sha" > "$state/current.env.tmp"
 mv "$state/current.env.tmp" "$state/current.env"
 changed=0
-echo "Готово: STAGE $release_sha"
+echo "Готово: ${TARGET^^} $release_sha"

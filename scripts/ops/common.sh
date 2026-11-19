@@ -4,7 +4,7 @@ set -Eeuo pipefail
 config_dir=${STOCKFLOW_CONFIG_DIR:-/opt/stockflow-ci}
 source "$config_dir/target.env"
 : "${DEPLOY_DIR:?}" "${PROJECT:?}" "${EXPECTED_DB_VOLUME:?}" "${TARGET:?}" "${TARGET_HOST:?}"
-[[ "$TARGET" == stage && "$(hostname -s)" == "$TARGET_HOST" ]] || { echo 'Неверный стенд/hostname' >&2; exit 1; }
+[[ "$TARGET" == "${expected_target:-stage}" && "$(hostname -s)" == "$TARGET_HOST" ]] || { echo 'Неверный стенд/hostname' >&2; exit 1; }
 [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9_-]*$ && "$DEPLOY_DIR" == /* ]] || exit 1
 [[ -f "$DEPLOY_DIR/compose.yaml" && -f "$DEPLOY_DIR/.env" ]] || exit 1
 state="$config_dir/state"

@@ -25,7 +25,7 @@ check() {
     drizzle/0000_rainy_iceman.sql:f53d3bf877be47b2c405ef24c3b07611fab73e75|\
     drizzle/0001_lab7_catalog_fields.sql:33b3ae1305b20b30431e566ceaa10498c0e12ac8)
       allowed='prefer-bigint-over-int|prefer-identity|prefer-text-field|require-lock-timeout|require-statement-timeout' ;;
-    database/schema/schema.sql:9ca2b91dc1546d9b4f6d3ab8f7dcd4ffc1a5b546)
+    database/schema/schema.sql:4a6da81069f09890de72b5de2d0aba318eff5d62)
       # pg_dump emits constraints and ordinary indexes for an empty restore.
       # Acceptance compares the full snapshot to a clean migrated database.
       allowed='prefer-robust-stmts|prefer-bigint-over-int|prefer-text-field|constraint-missing-not-valid|adding-serial-primary-key-field|disallowed-unique-constraint|require-concurrent-index-creation|adding-foreign-key-constraint' ;;

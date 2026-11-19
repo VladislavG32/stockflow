@@ -69,6 +69,8 @@ if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
         .map(({ number, unitPriceKopecks, totalCostKopecks }) => [number, unitPriceKopecks, totalCostKopecks]),
       [["CI-R3", 0, 0], ["CI-R2", 995, 4975], ["CI-R1", null, null]],
     );
+    assert.equal(history.find(({ number }) => number === "CI-R2")?.documentReference, "УПД-42");
+    assert.equal(history.find(({ number }) => number === "CI-R1")?.documentReference, null);
   });
 } else {
   let materialId: number;
@@ -122,11 +124,13 @@ if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
     assert.equal((await current()).recommended, 15);
     assert.deepEqual((await dashboard()).receipts.find((row) => row.id === id), {
       ...receipt("CI-R1"), id, materialName: material.name, supplierName: supplier.name, unit: material.unit,
-      unitPriceKopecks: null, totalCostKopecks: null,
+      unitPriceKopecks: null, totalCostKopecks: null, documentReference: null,
     });
-    const priced = await request("/api/receipts", 201, { ...receipt("CI-R2"), unitPriceKopecks: 995 });
-    const { rows } = await pool.query("select unit_price_kopecks from receipts where id = $1", [priced.id]);
-    assert.deepEqual(rows, [{ unit_price_kopecks: 995 }]);
+    const priced = await request("/api/receipts", 201, {
+      ...receipt("CI-R2"), unitPriceKopecks: 995, documentReference: " УПД-42 ",
+    });
+    const { rows } = await pool.query("select unit_price_kopecks, document_reference from receipts where id = $1", [priced.id]);
+    assert.deepEqual(rows, [{ unit_price_kopecks: 995, document_reference: "УПД-42" }]);
     const history: DashboardData["receipts"] = await request("/api/receipts", 200, undefined, "GET");
     assert.equal(history.find((row) => row.id === priced.id)?.totalCostKopecks, 4975);
     assert.equal((await current()).balance, 10);
@@ -168,6 +172,9 @@ if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
     await request("/api/receipts", 400, receipt("CI-BAD", -1));
     for (const unitPriceKopecks of [-1, 1.25, "995", 2147483648]) {
       await request("/api/receipts", 400, { ...receipt("CI-BAD"), unitPriceKopecks });
+    }
+    for (const documentReference of [42, "x".repeat(81)]) {
+      await request("/api/receipts", 400, { ...receipt("CI-BAD"), documentReference });
     }
     await assert.rejects(
       pool.query("update receipts set unit_price_kopecks = -1 where number = 'CI-R1'"),
