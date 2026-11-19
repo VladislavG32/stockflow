@@ -79,6 +79,8 @@ export const receiptSchema = z
       "Количество должно быть больше нуля",
     ),
     unitPriceKopecks: z.number().int().min(0).max(MAX_UNIT_PRICE_KOPECKS).nullable().default(null),
+    documentReference: z.string().trim().max(80).nullable().default(null)
+      .transform((value) => value || null),
     receivedOn: calendarDate,
     note: z.string().trim().max(500, "Не более 500 символов").default(""),
   })

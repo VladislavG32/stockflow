@@ -139,6 +139,7 @@ export function ReceiptTable({ rows, materialAction }: { rows: Receipt[]; materi
                 <th scope="col">Количество</th>
                 <th scope="col">Цена за единицу</th>
                 <th scope="col">Стоимость</th>
+                <th scope="col">Документ</th>
                 <th scope="col">Примечание</th>
               </tr>
             </thead>
@@ -160,6 +161,7 @@ export function ReceiptTable({ rows, materialAction }: { rows: Receipt[]; materi
                   </td>
                   <td>{formatKopecks(item.unitPriceKopecks)}</td>
                   <td>{formatKopecks(item.totalCostKopecks)}</td>
+                  <td>{item.documentReference ?? "—"}</td>
                   <td>{item.note || "—"}</td>
                 </tr>
               ))}

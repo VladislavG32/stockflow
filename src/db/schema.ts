@@ -6,6 +6,7 @@ import {
   integer,
   pgTable,
   serial,
+  text,
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -60,6 +61,7 @@ export const receipts = pgTable(
       .references(() => suppliers.id, { onDelete: "restrict" }),
     quantity: integer("quantity").notNull(),
     unitPriceKopecks: integer("unit_price_kopecks"),
+    documentReference: text("document_reference"),
     receivedOn: varchar("received_on", { length: 10 }).notNull(),
     note: varchar("note", { length: 500 }).notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })

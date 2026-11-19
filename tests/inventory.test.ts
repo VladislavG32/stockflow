@@ -95,6 +95,14 @@ test("Цена поступления: необязательное целое �
   }
 });
 
+test("Номер документа: необязательное поле, обрезка пробелов и предел длины", () => {
+  assert.equal(receiptSchema.parse(receipt).documentReference, null);
+  assert.equal(receiptSchema.parse({ ...receipt, documentReference: "   " }).documentReference, null);
+  assert.equal(receiptSchema.parse({ ...receipt, documentReference: " УПД-42/2026 " }).documentReference, "УПД-42/2026");
+  assert.equal(receiptSchema.safeParse({ ...receipt, documentReference: 42 }).success, false);
+  assert.equal(receiptSchema.safeParse({ ...receipt, documentReference: "х".repeat(81) }).success, false);
+});
+
 test("Стоимость и вывод цены: NULL, ноль, копейки и максимальное произведение", () => {
   assert.equal(receiptCostKopecks(5, null), null);
   assert.equal(receiptCostKopecks(5, 0), 0);

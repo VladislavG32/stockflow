@@ -123,6 +123,12 @@ export function InventoryForms({
                     max: "2100-12-31",
                   },
                   {
+                    name: "documentReference",
+                    label: "Номер сопроводительного документа",
+                    maxLength: 80,
+                    optional: true,
+                  },
+                  {
                     name: "note",
                     label: "Примечание",
                     maxLength: 500,
