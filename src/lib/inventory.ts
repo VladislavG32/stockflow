@@ -5,7 +5,7 @@ export function replenishment(
   minimumStock: number,
   targetStock: number,
 ) {
-  const shortage = balance <= minimumStock;
+  const shortage = balance < minimumStock;
   return {
     shortage,
     recommended: shortage ? Math.max(0, targetStock - balance) : 0,
