@@ -50,3 +50,16 @@ printf 'SHA %s | проект %s | PostgreSQL 17 | БД stockflow_ci | tmpfs\n' 
 "${ci[@]}" up -d --no-deps --force-recreate --no-build --wait --wait-timeout 90 app
 "${ci[@]}" run --rm -T --no-deps -e STOCKFLOW_INTEGRATION_PHASE=persistence tests \
   2> >(tee artifacts/persistence.log >&2) | bash scripts/ci/junit.sh > artifacts/persistence.junit.xml
+
+"${ci[@]}" run --rm -T --no-deps -e CI_RUN_ID migrate node --input-type=module \
+  < scripts/ci/check-upgrade.mjs 2>&1 | tee artifacts/migration-upgrade.log
+for database in stockflow_ci stockflow_ci_upgrade; do
+  "${ci[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges -U stockflow_ci "$database" \
+    | bash scripts/db/normalize-schema.sh > "artifacts/$database.schema.sql"
+done
+diff -u artifacts/stockflow_ci.schema.sql artifacts/stockflow_ci_upgrade.schema.sql
+echo 'pg_dump: схемы чистой базы и базы после обновления с 0001 совпадают.' \
+  | tee -a artifacts/migration-upgrade.log
+"${ci[@]}" exec -T db psql -X -U stockflow_ci -d stockflow_ci -Atc \
+  'select created_at, hash from drizzle.__drizzle_migrations order by id' > artifacts/migration-history.txt
+sha256sum artifacts/stockflow_ci.schema.sql | tee -a artifacts/migration-upgrade.log

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Material, Receipt, Supplier } from "@/lib/types";
+import { formatKopecks } from "@/lib/inventory";
 import { Empty, Panel } from "./ui";
 import { RecordForm } from "./record-form";
 import { materialFields } from "./inventory-forms";
@@ -136,6 +137,8 @@ export function ReceiptTable({ rows, materialAction }: { rows: Receipt[]; materi
                 <th scope="col">Операция / дата</th>
                 <th scope="col">Материал / поставщик</th>
                 <th scope="col">Количество</th>
+                <th scope="col">Цена за единицу</th>
+                <th scope="col">Стоимость</th>
                 <th scope="col">Примечание</th>
               </tr>
             </thead>
@@ -155,6 +158,8 @@ export function ReceiptTable({ rows, materialAction }: { rows: Receipt[]; materi
                   <td className="positive-quantity">
                     +{item.quantity} {item.unit}
                   </td>
+                  <td>{formatKopecks(item.unitPriceKopecks)}</td>
+                  <td>{formatKopecks(item.totalCostKopecks)}</td>
                   <td>{item.note || "—"}</td>
                 </tr>
               ))}

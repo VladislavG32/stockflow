@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { replenishment, csvCell } from "../src/lib/inventory";
+import { replenishment, csvCell, receiptCostKopecks, formatKopecks, MAX_UNIT_PRICE_KOPECKS } from "../src/lib/inventory";
 import { materialSchema, receiptSchema, supplierSchema } from "../src/lib/validation";
 
 test("Пополнение: недостаток, точная граница, избыток и нулевой минимум", () => {
@@ -83,6 +83,26 @@ test("Поступление: целое положительное количе
       false,
     );
   }
+});
+
+test("Цена поступления: необязательное целое число в диапазоне PostgreSQL integer", () => {
+  assert.equal(receiptSchema.parse(receipt).unitPriceKopecks, null);
+  for (const unitPriceKopecks of [null, 0, 995, MAX_UNIT_PRICE_KOPECKS]) {
+    assert.equal(receiptSchema.parse({ ...receipt, unitPriceKopecks }).unitPriceKopecks, unitPriceKopecks);
+  }
+  for (const unitPriceKopecks of [-1, 1.25, "995", "", MAX_UNIT_PRICE_KOPECKS + 1, Infinity]) {
+    assert.equal(receiptSchema.safeParse({ ...receipt, unitPriceKopecks }).success, false);
+  }
+});
+
+test("Стоимость и вывод цены: NULL, ноль, копейки и максимальное произведение", () => {
+  assert.equal(receiptCostKopecks(5, null), null);
+  assert.equal(receiptCostKopecks(5, 0), 0);
+  assert.equal(receiptCostKopecks(5, 995), 4975);
+  assert.equal(receiptCostKopecks(1_000_000, MAX_UNIT_PRICE_KOPECKS), 2_147_483_647_000_000);
+  assert.equal(formatKopecks(null), "Не указана");
+  assert.equal(formatKopecks(0), "0,00 ₽");
+  assert.equal(formatKopecks(4975), "49,75 ₽");
 });
 
 test("CSV: экранирование кавычек, разделителей, переносов и формул", () => {

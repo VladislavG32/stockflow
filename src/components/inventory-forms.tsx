@@ -1,6 +1,7 @@
 "use client";
 
 import type { DashboardData } from "@/lib/types";
+import { MAX_UNIT_PRICE_KOPECKS } from "@/lib/inventory";
 import { RecordForm, type Field } from "./record-form";
 
 export const materialFields = [
@@ -105,6 +106,14 @@ export function InventoryForms({
                     type: "number",
                     min: 1,
                     max: 1000000,
+                  },
+                  {
+                    name: "unitPriceKopecks",
+                    label: "Цена за единицу, коп.",
+                    type: "number",
+                    min: 0,
+                    max: MAX_UNIT_PRICE_KOPECKS,
+                    optional: true,
                   },
                   {
                     name: "receivedOn",

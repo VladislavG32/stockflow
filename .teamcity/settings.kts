@@ -55,6 +55,11 @@ object Verify : BuildType({
             scriptContent = "bash scripts/ci/static.sh"
         }
         script {
+            id = "Lab8_SQL"
+            name = "SQL Security — PostgreSQL migrations"
+            scriptContent = "bash scripts/ci/sql.sh"
+        }
+        script {
             id = "Lab7_Unit"
             name = "Unit tests — Node.js"
             scriptContent = """

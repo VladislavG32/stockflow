@@ -15,6 +15,13 @@
       "when": 1795092916030,
       "tag": "0001_lab7_catalog_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795110611600,
+      "tag": "0002_lab8_receipt_price",
+      "breakpoints": true
     }
   ]
 }

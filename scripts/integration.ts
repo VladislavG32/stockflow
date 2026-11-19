@@ -62,7 +62,13 @@ if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
     const item = materials.find(({ code }) => code === "CI-1");
     assert.ok(item);
     assert.equal(item.balance, 18);
-    assert.equal(receipts.filter(({ materialId }) => materialId === item.id).length, 6);
+    const history = receipts.filter(({ materialId }) => materialId === item.id);
+    assert.equal(history.length, 6);
+    assert.deepEqual(
+      history.filter(({ number }) => ["CI-R1", "CI-R2", "CI-R3"].includes(number))
+        .map(({ number, unitPriceKopecks, totalCostKopecks }) => [number, unitPriceKopecks, totalCostKopecks]),
+      [["CI-R3", 0, 0], ["CI-R2", 995, 4975], ["CI-R1", null, null]],
+    );
   });
 } else {
   let materialId: number;
@@ -116,14 +122,19 @@ if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
     assert.equal((await current()).recommended, 15);
     assert.deepEqual((await dashboard()).receipts.find((row) => row.id === id), {
       ...receipt("CI-R1"), id, materialName: material.name, supplierName: supplier.name, unit: material.unit,
+      unitPriceKopecks: null, totalCostKopecks: null,
     });
-    await request("/api/receipts", 201, receipt("CI-R2"));
+    const priced = await request("/api/receipts", 201, { ...receipt("CI-R2"), unitPriceKopecks: 995 });
+    const { rows } = await pool.query("select unit_price_kopecks from receipts where id = $1", [priced.id]);
+    assert.deepEqual(rows, [{ unit_price_kopecks: 995 }]);
+    const history: DashboardData["receipts"] = await request("/api/receipts", 200, undefined, "GET");
+    assert.equal(history.find((row) => row.id === priced.id)?.totalCostKopecks, 4975);
     assert.equal((await current()).balance, 10);
     assert.equal((await current()).recommended, 0);
   });
 
   test("I05 Количество и список поставщиков выбранного материала", async () => {
-    await request("/api/receipts", 201, { ...receipt("CI-R3", 2), supplierId: otherSupplierId });
+    await request("/api/receipts", 201, { ...receipt("CI-R3", 2), supplierId: otherSupplierId, unitPriceKopecks: 0 });
     await request("/api/receipts", 201, {
       ...receipt("CI-OTHER"), materialId: otherId, supplierId: unrelatedSupplierId,
     });
@@ -155,6 +166,13 @@ if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
     await request("/api/suppliers", 409, supplier);
     await request("/api/receipts", 409, receipt("CI-R1"));
     await request("/api/receipts", 400, receipt("CI-BAD", -1));
+    for (const unitPriceKopecks of [-1, 1.25, "995", 2147483648]) {
+      await request("/api/receipts", 400, { ...receipt("CI-BAD"), unitPriceKopecks });
+    }
+    await assert.rejects(
+      pool.query("update receipts set unit_price_kopecks = -1 where number = 'CI-R1'"),
+      { code: "23514", constraint: "receipts_nonnegative_unit_price" },
+    );
     await request("/api/receipts", 400, { ...receipt("CI-BAD"), receivedOn: "2026-02-30" });
     await request("/api/receipts", 400, { ...receipt("CI-BAD"), supplierId: 2147483647 });
     await request("/api/receipts", 400, { ...receipt("CI-BAD"), materialId: 2147483647 });
