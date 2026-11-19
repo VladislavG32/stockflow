@@ -47,7 +47,14 @@ services:
       <<: *test_database
       CI_RUN_ID: ${CI_RUN_ID:?}
       CI_DB_PASSWORD: ${CI_DB_PASSWORD:?}
-    command: [npm, --silent, run, "test:integration"]
+    command:
+      - node
+      - --test
+      - --test-reporter=spec
+      - --test-reporter-destination=stderr
+      - --test-reporter=junit
+      - --test-reporter-destination=stdout
+      - integration/scripts/integration.js
     networks: [isolated]
 networks:
   isolated:

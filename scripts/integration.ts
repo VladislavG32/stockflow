@@ -12,11 +12,11 @@ assert.match(runId ?? "", /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/);
 assert.match(databasePassword ?? "", /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/);
 assert.ok(connectionString === `postgresql://stockflow_ci:${databasePassword}@db:5432/stockflow_ci`,
   "Integration requires the isolated Compose database");
-const client = new pg.Client({ connectionString, connectionTimeoutMillis: 5000 });
+const pool = new pg.Pool({ connectionString, connectionTimeoutMillis: 5000 });
 const base = "http://app:3000";
 
 async function verifyDatabase() {
-  const { rows } = await client.query(`
+  const { rows } = await pool.query(`
     select current_database() as db, current_user as role,
       current_setting('server_version_num')::int / 10000 as major,
       current_setting('stockflow.ci_run', true) as run
@@ -53,11 +53,8 @@ const supplier = {
   contact: "qa@example.test",
 };
 
-before(async () => {
-  await client.connect();
-  await verifyDatabase();
-});
-after(() => client.end());
+before(verifyDatabase);
+after(() => pool.end());
 
 if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
   test("I09 Сохранность данных после пересоздания приложения", async () => {
