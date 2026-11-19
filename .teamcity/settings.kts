@@ -85,14 +85,15 @@ object Verify : BuildType({
             id = "Lab8_SQL"
             name = "SQL Security — PostgreSQL migrations"
             scriptContent = """
-                set -eo pipefail
+                set -e
                 if [ -f scripts/ci/sql.sh ]; then
                   bash scripts/ci/sql.sh
                 else
                   verified=357d1eff485b5b4fd86a7a3704d9d9a643926859
                   git cat-file -e "${'$'}verified:scripts/ci/sql.sh" ||
                     git fetch --no-tags https://github.com/VladislavG32/stockflow.git "${'$'}verified"
-                  git show "${'$'}verified:scripts/ci/sql.sh" | bash
+                  policy=${'$'}(git show "${'$'}verified:scripts/ci/sql.sh")
+                  printf '%s\n' "${'$'}policy" | bash
                 fi
             """.trimIndent()
         }
