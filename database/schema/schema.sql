@@ -110,6 +110,7 @@ CREATE TABLE public.receipts (
     note character varying(500) DEFAULT ''::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     unit_price_kopecks integer,
+    document_reference text,
     CONSTRAINT receipts_positive_quantity CHECK (((quantity > 0) AND (quantity <= 1000000)))
 );
 

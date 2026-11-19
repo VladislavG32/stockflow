@@ -59,9 +59,20 @@ for database in stockflow_ci stockflow_ci_upgrade; do
 done
 diff -u artifacts/stockflow_ci.schema.sql artifacts/stockflow_ci_upgrade.schema.sql
 diff -u database/schema/schema.sql artifacts/stockflow_ci.schema.sql
-echo 'pg_dump: схемы чистой базы и базы после обновления с 0001 совпадают.' \
+echo 'pg_dump: схемы чистой базы и базы после обновления с 0002 совпадают.' \
   | tee -a artifacts/migration-upgrade.log
 "${ci[@]}" exec -T db psql -X -U stockflow_ci -d stockflow_ci -Atc \
   'select created_at, hash from drizzle.__drizzle_migrations order by id' > artifacts/migration-history.txt
 diff -u database/schema/migration-history.txt artifacts/migration-history.txt
 sha256sum artifacts/stockflow_ci.schema.sql | tee -a artifacts/migration-upgrade.log
+
+mkdir -p artifacts/reference
+cp artifacts/stockflow_ci.schema.sql artifacts/reference/schema.sql
+cp artifacts/migration-history.txt artifacts/reference/history.txt
+"${ci[@]}" exec -T db createdb -U stockflow_ci -T template0 stockflow_ci_reference
+for length in 1 2 3; do
+  "${ci[@]}" run --rm -T --no-deps -e CI_RUN_ID migrate node --input-type=module - "$length" \
+    < scripts/ci/migrate-prefix.mjs
+  "${ci[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges -U stockflow_ci stockflow_ci_reference \
+    | bash scripts/db/normalize-schema.sh > "artifacts/reference/prefix-$length.schema.sql"
+done

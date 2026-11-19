@@ -133,7 +133,9 @@ test("CI: сборки отделены от TEST и Windows localhost", () => {
     assert.doesNotMatch(read("scripts/ci/integration.sh"), /^[ \t]*(?:docker[ \t]+build\b|"\$\{ci\[@\]\}"[ \t]+build\b)/m);
   }
   if (dsl.includes("object Prod :")) {
-    assert.doesNotMatch(dsl.split("object Prod :")[1], /triggers\s*\{/);
+    const prod = dsl.split("object Prod :")[1].split("object ")[0];
+    assert.doesNotMatch(prod, /triggers\s*\{|snapshot\s*\(/);
+    assert.match(prod, /artifacts\(Stage\)[\s\S]*lastSuccessful\(\)/);
   }
 });
 
