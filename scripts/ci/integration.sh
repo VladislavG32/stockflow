@@ -58,8 +58,10 @@ for database in stockflow_ci stockflow_ci_upgrade; do
     | bash scripts/db/normalize-schema.sh > "artifacts/$database.schema.sql"
 done
 diff -u artifacts/stockflow_ci.schema.sql artifacts/stockflow_ci_upgrade.schema.sql
+diff -u database/schema/schema.sql artifacts/stockflow_ci.schema.sql
 echo 'pg_dump: схемы чистой базы и базы после обновления с 0001 совпадают.' \
   | tee -a artifacts/migration-upgrade.log
 "${ci[@]}" exec -T db psql -X -U stockflow_ci -d stockflow_ci -Atc \
   'select created_at, hash from drizzle.__drizzle_migrations order by id' > artifacts/migration-history.txt
+diff -u database/schema/migration-history.txt artifacts/migration-history.txt
 sha256sum artifacts/stockflow_ci.schema.sql | tee -a artifacts/migration-upgrade.log
