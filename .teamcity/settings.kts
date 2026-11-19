@@ -39,7 +39,24 @@ object Verify : BuildType({
     name = "01 Verify all branches"
     maxRunningBuilds = 1
     vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
-    steps { script { name = "Linux CI: анализ, unit, build и архив образов"; scriptContent = "bash scripts/ci/verify.sh" } }
+    failureConditions { nonZeroExitCode = true }
+    steps {
+        script {
+            id = "Lab6_ESLint"
+            name = "Static Analysis — ESLint"
+            scriptContent = "bash scripts/ci/lint.sh"
+        }
+        script {
+            id = "Lab6_Gitleaks"
+            name = "Secret Scan — Gitleaks"
+            scriptContent = "bash scripts/ci/static.sh"
+        }
+        script {
+            id = "Verify_Build"
+            name = "Linux CI: проверки, сборка и архив образов"
+            scriptContent = "bash scripts/ci/verify.sh"
+        }
+    }
     triggers { vcs { branchFilter = "+:*" } }
     artifactRules = "artifacts/* => checks"
     requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
