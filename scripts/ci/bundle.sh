@@ -14,4 +14,4 @@ for target in "${targets[@]}"; do
   images+=("$image")
 done
 docker save "${images[@]}" | gzip -1 > artifacts/ci-images.tar.gz
-(cd artifacts && sha256sum ci-images.tar.gz > ci-images.sha256)
+bash scripts/ci/split-bundle.sh artifacts

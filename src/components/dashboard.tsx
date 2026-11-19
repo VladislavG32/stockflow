@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { DashboardData } from "@/lib/types";
+import { materialView, type MaterialSort } from "@/lib/material-view";
+import { materialSuppliers, receiptView } from "@/lib/dashboard-view";
 import { AppShell, BoxIcon, sections } from "./ui";
 import { InventoryForms } from "./inventory-forms";
 import {
@@ -28,7 +30,10 @@ export function Dashboard({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [stockFilter, setStockFilter] = useState("");
+  const [sort, setSort] = useState<MaterialSort>("name");
   const [updated, setUpdated] = useState("");
+  const [supplierMaterial, setSupplierMaterial] = useState<number | null>(null);
+  const [receiptMaterial, setReceiptMaterial] = useState<number | null>(null);
 
   async function refresh() {
     setRefreshing(true);
@@ -52,20 +57,26 @@ export function Dashboard({
   const search = query.trim().toLocaleLowerCase("ru-RU");
   const matches = (...values: string[]) =>
     values.some((value) => value.toLocaleLowerCase("ru-RU").includes(search));
-  const visibleMaterials =
-    data?.materials.filter(
-      (item) =>
-        matches(item.name, item.code, item.category) &&
-        (!category || item.category === category) &&
-        (!stockFilter ||
-          (stockFilter === "low" ? item.shortage : !item.shortage)),
-    ) ?? [];
-  const visibleSuppliers =
-    data?.suppliers.filter((item) => matches(item.name, item.contact)) ?? [];
-  const visibleReceipts =
-    data?.receipts.filter((item) =>
-      matches(item.number, item.materialName, item.supplierName, item.note),
-    ) ?? [];
+  const visibleMaterials = materialView(data?.materials ?? [], query, category, stockFilter, sort);
+  const relevantSuppliers = data && supplierMaterial !== null
+    ? materialSuppliers(data.suppliers, data.receipts, supplierMaterial)
+    : data?.suppliers ?? [];
+  const visibleSuppliers = relevantSuppliers.filter((item) =>
+    matches(item.name, item.contact, item.taxId, item.legalAddress),
+  );
+  const visibleReceipts = receiptView(data?.receipts ?? [], query, receiptMaterial);
+
+  function materialFilter(label: string, selected: number | null, change: (id: number | null) => void) {
+    return (
+      <select aria-label={label} className="panel-material-filter" value={selected ?? ""}
+        onChange={(event) => change(event.target.value ? Number(event.target.value) : null)}>
+        <option value="">Все материалы</option>
+        {data?.materials.map((material) => (
+          <option key={material.id} value={material.id}>{material.code} · {material.name}</option>
+        ))}
+      </select>
+    );
+  }
   const shortageCount =
     data?.materials.filter((item) => item.shortage).length ?? 0;
   const counts = data
@@ -78,14 +89,13 @@ export function Dashboard({
     : [];
 
   return (
-    <AppShell>
+    <AppShell formsAvailable={data !== null}>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">ПРОСТОЙ УЧЁТ. ПОЛНЫЙ ОБЗОР.</p>
-          <h1>StockFlow</h1>
-          <p className="subtitle">Система автоматизации складского учёта</p>
+          <p className="eyebrow">STOCKFLOW / РАБОЧЕЕ ПРОСТРАНСТВО</p>
+          <h1>Обзор склада</h1>
+          <p className="subtitle">Материалы, поступления и запасы — в одном месте</p>
         </div>
-        <span className="version-tag">ЛР №3 / 0.2</span>
       </div>
       <div className="intro-banner">
         <div className="intro-icon">
@@ -94,8 +104,7 @@ export function Dashboard({
         <div>
           <strong>Всё о складе — в одном пространстве</strong>
           <p>
-            Живые данные, понятные операции и план пополнения до целевого
-            запаса.
+            Регистрируйте поступления и следите за остатками. План пополнения рассчитывается по вашим порогам.
           </p>
         </div>
         <a href="#replenishment" className="banner-link">
@@ -106,7 +115,7 @@ export function Dashboard({
         <span aria-live="polite">
           {updated
             ? `Данные обновлены в ${updated}`
-            : "Данные из PostgreSQL · обновляйте при работе в нескольких вкладках"}
+            : "Общий снимок склада · обновляйте при работе в нескольких вкладках"}
         </span>
         <button
           className="button secondary"
@@ -172,7 +181,7 @@ export function Dashboard({
           )}
           <InventoryForms data={data} onSaved={refresh} />
           <div className="data-label">
-            <h2>Обзор склада</h2>
+            <h2>Данные склада</h2>
             <span>Показатели выше относятся ко всему складу</span>
           </div>
           <div className="filter-bar">
@@ -206,8 +215,18 @@ export function Dashboard({
                 onChange={(event) => setStockFilter(event.target.value)}
               >
                 <option value="">Любой запас</option>
+                <option value="empty">Нет в наличии</option>
                 <option value="low">Ниже минимума</option>
-                <option value="normal">В пределах нормы</option>
+                <option value="normal">Не ниже минимума</option>
+              </select>
+            </label>
+            <label>
+              <span>Порядок материалов</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value as MaterialSort)}>
+                <option value="name">По названию: А–Я</option>
+                <option value="code">По коду: А–Я</option>
+                <option value="balance">Остаток: по возрастанию</option>
+                <option value="recommended">К закупке: по убыванию</option>
               </select>
             </label>
             <button
@@ -216,15 +235,27 @@ export function Dashboard({
                 setQuery("");
                 setCategory("");
                 setStockFilter("");
+                setSort("name");
+                setSupplierMaterial(null);
+                setReceiptMaterial(null);
               }}
             >
               Сбросить
             </button>
           </div>
+          <div className="filter-result" role="status">
+            <span>Материалов: {visibleMaterials.length} из {data.materials.length} · поставщиков: {visibleSuppliers.length} · поступлений: {visibleReceipts.length}</span>
+            <span>Категория и запас применяются к материалам, остаткам и плану</span>
+          </div>
           <div className="panels-grid">
             <MaterialTable rows={visibleMaterials} onSaved={refresh} />
-            <SupplierList rows={visibleSuppliers} />
-            <ReceiptTable rows={visibleReceipts} />
+            <SupplierList rows={visibleSuppliers}
+              materialCount={supplierMaterial === null ? undefined : relevantSuppliers.length}
+              materialAction={materialFilter("Поставщики выбранного материала", supplierMaterial, setSupplierMaterial)}
+            />
+            <ReceiptTable rows={visibleReceipts}
+              materialAction={materialFilter("Поступления по материалу", receiptMaterial, setReceiptMaterial)}
+            />
             <BalanceTable rows={visibleMaterials} />
           </div>
           <div className="plan-section">

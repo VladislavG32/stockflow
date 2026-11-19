@@ -2,6 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { materials, receipts, suppliers } from "@/db/schema";
 import { replenishment } from "./inventory";
+import { HttpError } from "./api";
 import type { DashboardData } from "./types";
 import {
   limitsSchema,
@@ -22,6 +23,7 @@ export async function getDashboard(): Promise<DashboardData> {
           name: materials.name,
           category: materials.category,
           unit: materials.unit,
+          additionalUnits: materials.additionalUnits,
           minimumStock: materials.minimumStock,
           targetStock: materials.targetStock,
           balance: sql<string>`coalesce(sum(${receipts.quantity}), 0)`,
@@ -35,6 +37,8 @@ export async function getDashboard(): Promise<DashboardData> {
           id: suppliers.id,
           name: suppliers.name,
           contact: suppliers.contact,
+          taxId: suppliers.taxId,
+          legalAddress: suppliers.legalAddress,
         })
         .from(suppliers)
         .orderBy(suppliers.name);
@@ -93,12 +97,13 @@ export async function createSupplier(input: unknown) {
 
 export async function createReceipt(input: unknown) {
   const values = receiptSchema.parse(input);
-  // Одна вставка атомарна. Отдельного обновления остатка нет, значит нет гонки read-modify-write.
-  const [row] = await getDb()
-    .insert(receipts)
-    .values(values)
-    .returning({ id: receipts.id });
-  return row;
+  return getDb().transaction(async (tx) => {
+    // Согласуем вставку с изменением основной единицы измерения.
+    await tx.select({ id: materials.id }).from(materials)
+      .where(eq(materials.id, values.materialId)).for("key share");
+    const [row] = await tx.insert(receipts).values(values).returning({ id: receipts.id });
+    return row;
+  });
 }
 
 export async function updateLimits(id: number, input: unknown) {
@@ -109,4 +114,21 @@ export async function updateLimits(id: number, input: unknown) {
     .where(eq(materials.id, id))
     .returning({ id: materials.id });
   return row;
+}
+
+export async function updateMaterial(id: number, input: unknown) {
+  const values = materialSchema.parse(input);
+  return getDb().transaction(async (tx) => {
+    const [material] = await tx.select({ unit: materials.unit }).from(materials)
+      .where(eq(materials.id, id)).for("update");
+    if (!material) return;
+    if (material.unit !== values.unit) {
+      const [receipt] = await tx.select({ id: receipts.id }).from(receipts)
+        .where(eq(receipts.materialId, id)).limit(1);
+      if (receipt) throw new HttpError(409, "Основную единицу нельзя менять после поступления");
+    }
+    const [row] = await tx.update(materials).set(values)
+      .where(eq(materials.id, id)).returning({ id: materials.id });
+    return row;
+  });
 }

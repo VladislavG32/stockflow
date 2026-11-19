@@ -1,156 +1,96 @@
-# Лабораторная работа 5 Непрерывная доставка
+# ЛР №5 Непрерывная доставка на STAGE
 
-## Цель и требования
+Актуальная инструкция подготовки от 16 ноября 2026 года. ЛР №6–8 не выполняются.
+PR №1 объединён в dev коммитом `1cc04cb9e1a24b42bfc5e848dfd3c8fc0511e2f5`.
+Изменения ЛР №5 находятся в `feature/lab5-zero-stock`; прямой merge подготовительной ветки не выполнялся.
 
-Методичка требует jetbrains/teamcity-agent на TEST, доставку из Docker Hub на STAGE
-вместе с сохранённой PostgreSQL, функциональное изменение через feature → PR →
-реальное одобрение другого человека → DEV → успешная доставка. Самоодобрение не подходит.
-Подготовлены compose.agent, SSH-скрипты, release override и фильтр «Нулевой остаток».
-Контрольная ветка `codex/lab5-ready`; схема всё ещё ЛР3.
+## Что уже подтверждено
 
-## 1 Агент TEST и прямая связь с CI Linux
+- Git: ветка создана от объединённого PR №1, пользовательских незакоммиченных изменений перед работой не было.
+- Ранее фактически обнаруженный TeamCity Server: **TEST, http://192.168.56.11:8111**. Сборочный агент также запускался на TEST. Это ранее установленная конфигурация, а не результат опроса выключенных VM в этой работе.
+- Обновлённый UI сохранён. `docs/lab5-ui-compatibility.patch` прошёл `git apply --check`, затем применён. Повторно применять его к этой ветке не нужно.
+- Фильтр «Нет в наличии» выбирает balance === 0, включая minimumStock=0. Поиск, категории, сортировка, адаптивность и навигация сохранены.
+- Миграции и схема PostgreSQL не изменены. Скрипты разбиения Docker-архива и проверки SHA-256 из PR №1 сохранены.
+- Автоматические триггеры Publish и Stage отключены. В этой подготовке Publish, Deploy и рабочие миграции не запускались.
 
-Выполнить раздел4 LINUX_CI_SETUP_RU.md на TEST: private env, curl к CI из хоста
-и из контейнера, запуск compose.agent.yaml, Authorize stockflow-test-agent.
-Сборочный stockflow-build-agent уже работает на отдельной CI; его оставляем там.
-Windows не держит обратный туннель. SERVER_URL=http://192.168.56.14:8111 — пример
-проверенного Host-Only адреса CI, не localhost контейнера.
+## Что необходимо выяснить после запуска VM
 
-На TEST для повторной проверки (checkout конфигурации):
+Не создавать дополнительную CI VM. Адрес 192.168.56.14 из старых инструкций не является адресом фактического TeamCity.
+Повторно проверить доступность Server на TEST, версию 2026.2, текущий Settings root, имена/состояние агентов и ресурсы TEST.
+DSL оставляет требования stockflow-build-agent для Verify/Publish и stockflow-test-agent для Stage.
+Требования к именам описывают конфигурацию кода; их соответствие агентам необходимо подтвердить в TeamCity.
+Если на TEST будет два агента, ограничить параллельность по фактическим ресурсам, не менять глобальные лимиты без отдельной оценки.
 
-```bash
-cd ~/stockflow-ci-config
-curl --fail --connect-timeout 5 http://192.168.56.14:8111/login.html
-docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.agent.yaml ps
-docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.agent.yaml exec -T agent docker compose version
-docker stats --no-stream
-```
-
-Скриншот: connected TEST-agent и отдельный build-agent. На защите: «TEST получает
-задачу доставки через Server, готовый образ берёт из Hub; компиляция выполняется на CI».
-
-## 2 Подготовить STAGE без смены БД
-
-На STAGE сначала в каталоге работающей ЛР3:
+Адрес STAGE, SSH User, hostname, каталог проекта, Compose project, размещение PostgreSQL и его том **не подтверждены**.
+`infra/teamcity/ssh_config.example` содержит намеренно незаполненные параметры. PROD-доступ не добавлен.
+Проверить на STAGE через консоль VM:
 
 ```bash
-cd ~/stockflow
+hostname -s
 pwd
 docker compose ls
 docker compose ps
 DB_ID=$(docker compose ps -q db)
-docker inspect "$DB_ID" --format '{{range .Mounts}}{{println .Name .Destination}}{{end}}'
+docker inspect "$DB_ID" --format '{{range .Mounts}}{{println .Type .Name .Source .Destination}}{{end}}'
 ```
 
-Записать абсолютный каталог, фактическое имя проекта из `compose ls` и имя тома
-для /var/lib/postgresql/data. Не угадывать их по инструкции.
-Создать `/opt/stockflow-ci/target.env` (на STAGE) с фактическими значениями:
+Скрипт рассчитан на существующий сервис `db` и named volume в `/var/lib/postgresql/data`, как в Compose ЛР3.
+Если PostgreSQL размещён иначе, сначала установить реальную схему подключения и адаптировать защитные проверки; не создавать новый db/volume для обхода отказа.
+Перед изменением STAGE сохранить резервную копию по действующей инструкции и контрольную запись/остаток из текущей БД. Не считать предполагаемые `LAB3-STAGE-001` и 7 шт. подтверждёнными: записать фактические значения.
 
-```bash
-sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci
-mkdir -p /opt/stockflow-ci/{releases,state,backups}
-nano /opt/stockflow-ci/target.env
-chmod 600 /opt/stockflow-ci/target.env
-```
+## Настройка TEST и STAGE после проверки
 
-Пример содержимого, пути/том ЗАМЕНИТЬ результатами предыдущих команд:
+На TEST использовать `infra/teamcity/compose.agent.yaml`: jetbrains/teamcity-agent, private env `TEAMCITY_SERVER_URL=http://192.168.56.11:8111`, имя stockflow-test-agent.
+Существующий build-agent не переносить по устаревшему примеру отдельной CI VM. Проверить соединение Server и агента из контейнера, авторизацию и наличие Docker CLI, Compose с поддержкой !reset/!override, SSH, Bash, Git, flock на соответствующих хостах.
+Ключ для STAGE хранить только в `/opt/stockflow-ci/ssh`, права 600, не в Git/артефактах. Host key сверить с консолью STAGE; StrictHostKeyChecking не отключать.
+
+На STAGE создать `/opt/stockflow-ci/target.env` с chmod 600. Значения ниже — поля для заполнения, а не готовые параметры:
 
 ```bash
 TARGET=stage
-DEPLOY_DIR=/home/ubuntu/stockflow
-PROJECT=stockflow
-EXPECTED_DB_VOLUME=stockflow_postgres_data
+TARGET_HOST=<подтверждённый hostname -s>
+DEPLOY_DIR=<абсолютный существующий каталог с compose.yaml и .env>
+PROJECT=<существующее имя Compose project>
+EXPECTED_DB_VOLUME=<подтверждённое имя тома PostgreSQL>
 ```
 
-Для этапа ЛР5 MIGRATION_MODE ещё не нужен. В ЛР8 добавляется manual, позже auto.
-SSH-пользователь должен иметь доступ к Docker и этому каталогу; это административные
-права только в домашнем учебном контуре. `.env` с паролем остаётся в DEPLOY_DIR.
-STAGE должен иметь исходную рабочую БД ЛР3 и применённую 0000; автоматической очистки нет.
+Не выполнять этот шаблон до замены полей. `.env` с паролем остаётся в DEPLOY_DIR, каталог state должен быть доступен только SSH-пользователю.
+Скрипты используют `/opt/stockflow-ci`; STOCKFLOW_CONFIG_DIR предназначен для изолированных локальных тестов/явной настройки оператора.
 
-На TEST создать отдельный ключ без вывода приватной части:
+## Цепочка и гарантии
+
+1. Verify проверяет исходный snapshot и создаёт Docker runner/migrator с revision label. Архив делится на части до 200 MB с SHA-256 частей и целого архива.
+2. Publish вручную получает артефакты **sameChain**, проверяет состав, SHA-256 и revision, загружает те же байты без rebuild, отправляет в Docker Hub и выпускает `release.env` с неизменяемыми digest и SHA коммита.
+3. Stage допускает только dev, получает `release.env` той же цепочки Publish. Перед SSH проверяются поля манифеста, отсутствие дубликатов, формат digest и совпадение RELEASE_SHA с checkout. Манифест никогда не исполняется как shell-код.
+4. TEST передаёт `git archive HEAD` по SSH на stockflow-stage. На STAGE проверяются hostname, проект, работающий db и точное имя тома. Общая flock-блокировка исключает параллельные deploy/rollback.
+5. STAGE pull обоих digest и сверяет revision с RELEASE_SHA. Запускается только `up -d --no-deps --no-build --pull never app`. Сервис migrate не запускается, db не пересоздаётся.
+6. `/api/ready` должен вернуть HTTP 2xx и JSON `status=ok`, `service=stockflow`, `database=ok`. Проверка идёт внутри app до 60 попыток с паузой 2 секунды и HTTP timeout 3 секунды. Затем проверяются image ID запущенного app, прежний ID db и том.
+7. Только после успеха записываются state/current.env и state/previous.env. При ошибке после начала обновления восстанавливается прежний локальный image ID; readiness, image ID и db проверяются повторно. Неуспех доставки возвращает ненулевой код; провал rollback — код 2 и явное сообщение оператору.
+
+`down`, удаление томов, prune, build и миграции отсутствуют в операции доставки. PostgreSQL и существующие Docker volumes сохраняются. Старый локальный app image нельзя удалять сборщиком мусора до завершения проверки и срока ручного отката.
+Это не обещание нулевого времени простоя. Отказ хоста, потеря питания или SIGKILL могут оборвать процесс; тогда оператор должен проверить фактический app/БД и state перед повторным запуском.
+
+Ручной rollback после успешной доставки, из каталога доставленного release на STAGE:
 
 ```bash
-ssh-keygen -t ed25519 -f /opt/stockflow-ci/ssh/id_ed25519 -N '' -C stockflow-teamcity
-ssh-copy-id -i /opt/stockflow-ci/ssh/id_ed25519.pub ubuntu@192.168.56.12
-cp infra/teamcity/ssh_config.example /opt/stockflow-ci/ssh/config
-nano /opt/stockflow-ci/ssh/config
-ssh-keyscan -t ed25519 192.168.56.12 > /opt/stockflow-ci/ssh/known_hosts.candidate
-ssh-keygen -lf /opt/stockflow-ci/ssh/known_hosts.candidate
+bash scripts/ops/rollback-app.sh
 ```
 
-На STAGE через консоль VirtualBox: `sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`.
-Только после совпадения fingerprint на TEST:
+Он использует previous.env, меняет только app и обновляет current.env после readiness. У старого образа без revision label SHA честно записывается как unknown.
 
-```bash
-mv /opt/stockflow-ci/ssh/known_hosts.candidate /opt/stockflow-ci/ssh/known_hosts
-chmod 600 /opt/stockflow-ci/ssh/{config,id_ed25519,known_hosts}
-docker compose --env-file /opt/stockflow-ci/teamcity.env -f infra/teamcity/compose.agent.yaml exec -T agent ssh -o BatchMode=yes stockflow-stage hostname
-```
+## Порядок завершения ЛР №5
 
-Результат stockflow-stage. Не добавлять PROD ключ/доступ раньше ЛР8. Не копировать
-private key в Git, TeamCity artifacts или скриншот.
+- Проверить настройки versioned settings: код DSL из ветки подготовки сам по себе не доказывает импорт в работающий TeamCity. Для проверки feature безопасно импортировать конфигурацию с отключёнными Publish/Stage; источник сборки остаётся отдельным VCS root dev с branchSpec.
+- Получить реальную успешную Verify feature и снимок TeamCity. Локальные тесты её не заменяют.
+- Открыть PR №2 feature/lab5-zero-stock → dev, получить независимое Approved. При необходимости настроить требование одного одобрения в ruleset dev. Самоодобрение и второй собственный аккаунт не подходят.
+- Только после независимого review объединить PR вручную. Зафиксировать Verify dev и соответствующий SHA.
+- Отдельным согласованным действием настроить секреты Publish и реальный IMAGE_REPO, проверить STAGE/SSH/PG и запустить цепочку Verify → ручной Publish → ручной Stage. Запуск Stage может подтянуть зависимость Publish; не нажимать Run до готовности всей цепочки.
+- Проверить приложение снаружи на фактическом адресе/порту STAGE, фильтр, app digest, readiness, прежний контейнер/том db и контрольную SQL-запись до/после.
+- На учебном STAGE согласованно испытать отказ readiness и восстановление старой версии; сохранить настоящий лог. Не ломать действующую БД ради демонстрации rollback.
+- Добавить настоящие скриншоты и результаты в черновик отчёта. Автопубликацию в текущей подготовке не включать. ЛР №6–8 не начинать.
 
-## 3 Feature и реальный Pull Request
+## Источник требований
 
-Windows PowerShell, dev ещё на результате ЛР4:
-
-```powershell
-Set-Location D:\StockFlow
-git fetch origin
-git switch -c feature/lab5-zero-stock origin/dev
-git merge --ff-only codex/lab5-ready
-git push -u origin feature/lab5-zero-stock
-```
-
-Если dev уже содержит другие изменения, ff-only остановится. Создайте обычный merge
-и разрешите конфликты, не reset/force. Предварительно сравните diff: новая функция
-должна быть видна именно в PR. Не сливайте в dev финальную ветку ЛР8.
-
-В GitHub создать PR feature/lab5-zero-stock → dev. Пригласить реального человека
-с правом review. В Settings → Branch protection/rulesets для dev включить Require PR,
-Require approvals 1, запрет force pushes. Для личного публичного repo проверьте
-доступность правила в бесплатном тарифе. Самостоятельно создать Approved от второго
-своего аккаунта не является независимым согласованием. Если участника нет, согласуйте
-с преподавателем допустимый порядок — это остающееся внешнее действие.
-
-В TeamCity сначала сохранить зелёный Verify feature. После реального approve выполнить
-merge PR. Настройки TeamCity переключить на codex/lab5-ready: появится Stage.
-Ветка build source остаётся dev. Дождаться Verify → Publish → Stage.
-
-## 4 Проверка доставки и данных
-
-STAGE:
-
-```bash
-cd ~/stockflow
-docker compose ps
-docker compose exec -T db psql -U stockflow -d stockflow -c "SELECT m.code,coalesce(sum(r.quantity),0) balance FROM materials m LEFT JOIN receipts r ON r.material_id=m.id WHERE m.code='LAB3-STAGE-001' GROUP BY m.id;"
-curl --fail http://127.0.0.1:3000/api/ready
-cat /opt/stockflow-ci/state/current.env
-```
-
-APP_PORT взять из вашей .env, если отличается. Ожидается прежняя запись и 7 шт.
-В браузере STAGE выбрать «Нулевой остаток»: остаются только позиции с 0, включая
-позиции с minimum=0. Поле в БД для этой функции не добавлялось. Readiness — HTTP 200.
-Сравнить app digest в current.env и release.env TeamCity. Скриншоты: feature build,
-реальное Approved, merge PR, DEV build, STAGE deploy, фильтр и сохранённая запись.
-
-## Восстановление и ошибки
-
-Автоматический rollback возвращает прежний app image при readiness failure. Он
-не выполняет down и не удаляет том. Если откат сам не удался — `docker compose logs
---tail 100 app` и проверить свободный диск; не удалять PostgreSQL ради запуска.
-После успешной доставки последующий ручной rollback доступен в финальных scripts/ops;
-при ранней ЛР5 сохраните прежний image ID (`docker inspect <app-id> --format '{{.Image}}'`)
-и запустите compose release с APP_IMAGE прежнего образа и `up -d --no-deps app`.
-SSH host key changed — сверить ключ по VirtualBox, не отключать проверку.
-Неверный том — исправить target.env после inspect, а не создавать новый том.
-Permission denied — проверить ssh config User, authorized_keys и chmod.
-
-## Вопросы и защита на 5–7 минут
-
-1 минута — отличие CI от доставки. 1 — два агента Linux и прямая private-связь.
-2 — feature diff, реальный PR и approval. 1–2 — DEV build, digest, Stage и фильтр.
-1 — сохранность записи и механизм rollback. Вопросы: почему --no-deps;
-почему PostgreSQL не хранится в образе; почему согласование нельзя имитировать;
-как проверить, что выбран именно прежний volume.
+Прочитан оригинал «Лабораторная работа 5.pdf» из локального архива курса «Автоматизация процессов жизненного цикла программного обеспечения».
+Его семь пунктов: доставка Docker Hub → STAGE вместе с БД; агент на TEST; функциональная feature; успешная feature-сборка; PR в dev с чужим одобрением; сборка dev и доставка после merge; текстовый отчёт с описанными скриншотами.
+Локальная подготовка не означает выполнения пунктов на VM и независимого согласования.

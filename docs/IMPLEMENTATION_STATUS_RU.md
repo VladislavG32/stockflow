@@ -1,3 +1,5 @@
+> Историческая подготовка ЛР №4–8. Сохранена для продолжения; не является отчётом об их выполнении. Актуальное состояние на 13.11.2026: [аудит](PRE_LAB5_AUDIT_RU.md), [ветки](BRANCHES_RU.md), [указатель](README.md).
+
 # Статус после исправления Linux инфраструктуры
 
 Архитектура прежней подготовки пересмотрена: Windows не запускает Docker/TeamCity.
@@ -45,11 +47,11 @@ RAM/диска — выбранные ограничения, а не измер
 
 | ЛР | Рабочая контрольная ветка | Состав |
 |---|---|---|
-| 4 | codex/lab4-ready | ЛР3 + Verify/Publish, без будущей БД |
-| 5 | codex/lab5-ready | + нулевой остаток, Agent, Stage, без изменения схемы |
-| 6 | codex/lab6-ready | + Gitleaks и ESLint gates |
-| 7 | codex/lab7-ready | + API unit, isolated PG, persistence/failure tests |
-| 8 ручная | codex/lab8-manual-ready | + только0001, цена, backup, manual Stage |
+| 4 | prep/lab4-ci | ЛР3 + Verify/Publish, без будущей БД |
+| 5 | prep/lab5-delivery | + нулевой остаток, Agent, Stage, без изменения схемы |
+| 6 | prep/lab6-static-analysis | + Gitleaks и ESLint gates |
+| 7 | prep/lab7-testing | + API unit, isolated PG, persistence/failure tests |
+| 8 ручная | prep/lab8-migrations | + только0001, цена, backup, manual Stage |
 | 8 auto/PROD | feature/labs4-8-preparation | +0002, накладная, rehearsal и manual Prod |
 
 Ветки ready образуют последовательность для merge в dev. Они включают исправления

@@ -1,3 +1,5 @@
+> Справочник первоначальной установки, сохранённый исторический план. Состояние VM и адреса сегодня не подтверждены. Перед PR №1 приоритет имеют [актуальная ЛР №4](LAB4_STEPS_RU.md) и [проверка перед merge](PRE_MERGE_PR1_RU.md). Команды установки, публикации и подключения стендов не относятся к текущему аудиту. `prep/lab4-ci` ниже — контрольная версия первоначальной установки; она не обновляется автоматически при merge в dev.
+
 # Linux инфраструктура без Windows Docker
 
 ## Решение и точки остановки
@@ -7,7 +9,7 @@
 Adapter1 NAT (Internet), Adapter2 та же Host-Only сеть, что у TEST/STAGE/PROD.
 Предлагаемый IP192.168.56.14 НЕ считается занятым/назначенным: сначала проверить
 VirtualBox DHCP/список VM и отсутствие конфликта. У CI нет пользовательской PostgreSQL.
-VM пока не создана. На Windows — только VirtualBox, PowerShell, SSH, Git, браузер.
+На момент составления первоначального плана VM ещё не была создана; текущее состояние не проверено. На Windows — только VirtualBox, PowerShell, SSH, Git, браузер.
 
 Перед созданием на Windows PowerShell:
 
@@ -113,7 +115,7 @@ df -h /
 CI Linux, из отдельного clone (не рабочего каталога приложения):
 
 ```bash
-git clone -b codex/lab4-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
+git clone -b prep/lab4-ci https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
 cd ~/stockflow-ci-config
 sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci
 cp infra/teamcity/linux.env.example /opt/stockflow-ci/teamcity.env
@@ -171,7 +173,7 @@ ssh -N -L 8111:192.168.56.14:8111 ubuntu@192.168.56.14
 На TEST, отдельный checkout конфигурации из ЛР4/5, не ~/stockflow рабочего приложения:
 
 ```bash
-git clone -b codex/lab4-ready https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
+git clone -b prep/lab4-ci https://github.com/VladislavG32/stockflow.git ~/stockflow-ci-config
 cd ~/stockflow-ci-config
 sudo install -d -m 700 -o "$USER" -g "$(id -gn)" /opt/stockflow-ci
 cp infra/teamcity/linux.env.example /opt/stockflow-ci/teamcity.env
@@ -250,7 +252,7 @@ CI60ГБ нужны для TeamCity artifacts, Docker layers и BuildKit cache. 
 
 ## Проверка Kotlin DSL без установки Maven на Windows
 
-На CI Linux из clone выбранной ready-ветки (после Server startup):
+На CI Linux из clone выбранной контрольной ветки `prep/...` (после Server startup):
 
 ```bash
 set -a

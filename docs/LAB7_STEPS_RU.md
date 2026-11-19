@@ -1,10 +1,12 @@
+> Подготовительный сценарий будущего этапа, не текущая инструкция перед merge. ЛР №5–8 в этой задаче не выполняются. Сначала завершить [проверку PR №1](PRE_MERGE_PR1_RU.md); актуальные ветки — в [карте](BRANCHES_RU.md).
+
 # Лабораторная работа 7 Автоматизированное тестирование
 
 ## Цель и требования
 
 Unit + интеграционные тесты минимум 40% функциональных требований сданного ТЗ,
 описание каждого теста, TeamCity всех веток, реальный пример плохого кода и затем
-исправления; успешные FEATURE/FIX, DEV, PROD. Контрольная ветка `codex/lab7-ready`.
+исправления; успешные FEATURE/FIX, DEV, PROD. Контрольная ветка `prep/lab7-testing`.
 Финальная ветка дополнительно проверяет цену и миграции будущей ЛР8.
 
 Выбран встроенный `node:test` + `node:assert` и существующий tsx. Причина: работает
@@ -16,7 +18,7 @@ Drizzle и настоящий PostgreSQL17; compose.ci.yaml создаёт от�
 
 ## Запуск
 
-На CI Linux по SSH, отдельный checkout codex/lab7-ready:
+На CI Linux по SSH, отдельный checkout prep/lab7-testing:
 
 ```bash
 cd ~/stockflow-ci-config
@@ -24,7 +26,7 @@ bash scripts/ci/preflight.sh build
 docker run --rm --memory=2300m -v "$PWD:$PWD" -w "$PWD" node:24-bookworm-slim bash -ec 'npm ci; npm run lint; npm run typecheck; npm test; npm run test:coverage; npm run demo:test-failure'
 ```
 
-В TeamCity переключить Settings root на codex/lab7-ready. Verify выполняется на
+В TeamCity переключить Settings root на prep/lab7-testing. Verify выполняется на
 stockflow-build-agent CI: unit/build и artifacts checks/ci-images.tar.gz, ci-images.sha256.
 Новая `01b Acceptance PostgreSQL on TEST` получает их через sameChain на TEST-agent.
 Скриншот: две конфигурации, два разных агента, зелёный Acceptance и его checks/лог.
@@ -108,7 +110,7 @@ unit-модулей api/inventory/validation. Это не процент все�
 
 ## TeamCity и демонстрация ошибки
 
-Настройки codex/lab7-ready. Проверить feature/fix, затем dev, затем prod; сохранить
+Настройки prep/lab7-testing. Проверить feature/fix, затем dev, затем prod; сохранить
 номер build, SHA, exit code. Все актуальные ветки проходят Verify → Acceptance на TEST до Publish/Stage.
 Для реального красного TeamCity build создайте отдельную feature/lab7-broken от dev,
 замените `balance < minimumStock` на `balance <= minimumStock` в inventory.ts,
@@ -138,7 +140,7 @@ Windows PowerShell, после завершения предыдущей ЛР:
 Set-Location D:\StockFlow
 git fetch origin
 git switch -c feature/lab7-tests origin/dev
-git merge codex/lab7-ready
+git merge prep/lab7-testing
 git push -u origin feature/lab7-tests
 ```
 

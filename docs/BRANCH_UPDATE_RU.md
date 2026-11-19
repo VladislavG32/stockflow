@@ -1,54 +1,14 @@
-# Безопасное обновление контрольных версий
+# Обновление веток перед слиянием PR №1
 
-Исправления добавляются обычными коммитами и merge в порядке:
+Актуально на 16.11.2026. PR №1: `feature/pre-lab5-audit-ui-cleanup` → `dev`. База `origin/dev` — `b742e5a`, проверенный head PR — `0716ff5`. Локальные `dev`/`prod` могут отставать; источником проверки служат удалённые refs.
 
-```text
-codex/lab4-ready
-  → codex/lab5-ready
-  → codex/lab6-ready
-  → codex/lab7-ready
-  → codex/lab8-manual-ready
-  → feature/labs4-8-preparation
-```
+1. Прочитать [результат подготовки и ограничения TeamCity](PRE_MERGE_PR1_RU.md).
+2. Перед слиянием проверить в TeamCity фактические Settings root, Source, параметры и триггеры. Merge в dev может автоматически вызвать Publish; при запрете публикации администратор должен заранее приостановить автоматический Publish и проверить очередь.
+3. Включить эти исправления документации в PR №1 и повторить проверки на итоговом head. Merge — отдельное решение владельца после проверки CI.
+4. После согласованного merge сверить итоговый SHA и дерево dev. `main`, `prod`, подготовительные ветки и рабочие VM этим действием не обновлять.
 
-Ни один старый commit не переписан. Для проверки до push: предыдущая вершина каждой
-ветки должна быть её предком (`git merge-base --is-ancestor OLD_SHA BRANCH`).
-ЛР4–7 содержат только0000, ручная ЛР8 —0000/0001, финальная —0000/0001/0002.
-Функции цены/накладной не попадают в ранние контрольные версии через исправления.
+[Карта веток](BRANCHES_RU.md) содержит действующие имена `prep/lab4-ci`, `prep/lab5-delivery`, `prep/lab6-static-analysis`, `prep/lab7-testing`, `prep/lab8-migrations`. Это контрольные материалы, не отчёты о выполнении. Не переносить их цепочкой в dev и не брать всю `feature/labs4-8-preparation`: там будущие миграции.
 
-Windows PowerShell, после проверки локальных файлов:
+Версионированные настройки TeamCity и исходники сборки — отдельные VCS roots. Для текущего PR согласованный рабочий источник — `refs/heads/dev`; `refs/heads/prep/lab4-ci` остаётся фиксированной контрольной точкой ЛР №4 и не получит исправления из dev автоматически. Фактический root на сервере не подтверждён. Нельзя загружать DSL из произвольной feature-ветки с доступом к секретам Publish.
 
-```powershell
-Set-Location D:\StockFlow
-git status --short
-git fetch origin
-git push origin codex/lab4-ready
-git push origin codex/lab5-ready
-git push origin codex/lab6-ready
-git push origin codex/lab7-ready
-git push origin codex/lab8-manual-ready
-git push origin feature/labs4-8-preparation
-```
-
-Если push rejected/non-fast-forward — остановиться, изучить `git log --graph --oneline
---all`, сохранить чужие/новые коммиты обычным merge, решить конфликты и снова проверить
-набор SQL/функций. Не использовать force, rebase, reset для замены remote-истории.
-Эти push здесь НЕ выполнялись. Исходные feature/lab3-stockflow/main не обновлять.
-
-У вас уже могут существовать dev/prod на b0b4fb9. Для текущей ЛР4 создать PR:
-
-```powershell
-git switch -c fix/lab4-linux-ci codex/lab4-ready
-git push -u origin fix/lab4-linux-ci
-```
-
-В GitHub PR fix/lab4-linux-ci → dev; после review merge. Для демонстрации prod
-аналогичный обычный PR из codex/lab4-ready → prod. Не переносить финальную ветку
-в dev/prod на этапе ЛР4. Прямой fast-forward допустим только если правила GitHub
-это разрешают и remote не содержит других коммитов; PR понятнее для защиты.
-
-После merge выбрать Versioned Settings root codex/lab4-ready и Always current settings,
-а build source оставить dev. Новая CI имеет новые admin/credential records: создать
-секреты Publish на ней заново, непрозрачные credentialsJSON от старого Server не копировать.
-Следующие ЛР переходят по ready-веткам через собственные feature/PR как раньше.
-Старые prep-теги — исторические промежуточные точки; выполнять по updated ready-веткам.
+[Прежний план обновления](archive/BRANCH_UPDATE_RU.md) сохранён отдельно как архив. Его команды push нескольких веток, создание `fix/lab4-linux-ci` и сведения о прежних SHA не являются текущими поручениями. История не переписывается; force-push, удаление веток и смена default branch здесь не требуются.

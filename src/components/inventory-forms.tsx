@@ -3,11 +3,12 @@
 import type { DashboardData } from "@/lib/types";
 import { RecordForm, type Field } from "./record-form";
 
-const materialFields: Field[] = [
-  { name: "code", label: "Код материала", maxLength: 40 },
-  { name: "name", label: "Наименование", maxLength: 160 },
-  { name: "category", label: "Категория", maxLength: 100 },
-  { name: "unit", label: "Единица измерения", maxLength: 20 },
+export const materialFields = [
+  { name: "code", label: "Код класса материала", maxLength: 40, placeholder: "Например, МАТ-001" },
+  { name: "name", label: "Наименование", maxLength: 160, placeholder: "Например, Кабель ВВГ" },
+  { name: "category", label: "Группа", maxLength: 100, placeholder: "Например, Электрика" },
+  { name: "unit", label: "Основная единица измерения", maxLength: 20, placeholder: "шт." },
+  { name: "additionalUnits", label: "Дополнительные единицы через запятую", maxLength: 220, optional: true, commaSeparated: true },
   {
     name: "minimumStock",
     label: "Минимальный запас",
@@ -24,7 +25,7 @@ const materialFields: Field[] = [
     max: 1000000,
     defaultValue: 0,
   },
-];
+] satisfies (Field & { name: keyof DashboardData["materials"][number] })[];
 
 // details раскрывает форму без отдельного окна; все поля доступны с клавиатуры.
 export function InventoryForms({
@@ -37,7 +38,7 @@ export function InventoryForms({
   return (
     <section className="entry-section" aria-labelledby="entry-title">
       <div className="data-label">
-        <h2 id="entry-title">Работа со складом</h2>
+        <h2 id="entry-title" tabIndex={-1}>Работа со складом</h2>
         <span>Поля со * обязательны · количество — целое число</span>
       </div>
       <div className="entry-grid">
@@ -57,6 +58,8 @@ export function InventoryForms({
             endpoint="/api/suppliers"
             fields={[
               { name: "name", label: "Название", maxLength: 160 },
+              { name: "taxId", label: "ИНН", maxLength: 12, optional: true },
+              { name: "legalAddress", label: "Юридический адрес", maxLength: 250, optional: true },
               {
                 name: "contact",
                 label: "Контактные данные",
@@ -107,6 +110,8 @@ export function InventoryForms({
                     name: "receivedOn",
                     label: "Дата поступления",
                     type: "date",
+                    min: "2000-01-01",
+                    max: "2100-12-31",
                   },
                   {
                     name: "note",
@@ -119,7 +124,7 @@ export function InventoryForms({
               />
             </>
           ) : (
-            <p>Сначала создайте хотя бы один материал и одного поставщика.</p>
+            <div className="receipt-help"><p>Для поступления нужны материал и поставщик. Добавьте их в формах рядом, затем вернитесь сюда.</p></div>
           )}
         </details>
       </div>

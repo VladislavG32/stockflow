@@ -8,10 +8,12 @@ export type Field = {
   type?: "text" | "number" | "date";
   maxLength?: number;
   optional?: boolean;
-  min?: number;
-  max?: number;
+  min?: number | string;
+  max?: number | string;
+  placeholder?: string;
   defaultValue?: string | number;
   options?: { value: number; label: string }[];
+  commaSeparated?: boolean;
 };
 
 // Переводит FormData в JSON и показывает результат. Структура полей задаётся снаружи,
@@ -35,6 +37,20 @@ export function RecordForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
+    for (const field of fields) {
+      const control = form.elements.namedItem(field.name);
+      if (control instanceof HTMLInputElement) {
+        control.setCustomValidity(!field.optional && !control.value.trim() ? "Заполните поле: одних пробелов недостаточно" : "");
+        if (!control.reportValidity()) return;
+      }
+    }
+    const minimum = form.elements.namedItem("minimumStock");
+    const target = form.elements.namedItem("targetStock");
+    if (minimum instanceof HTMLInputElement && target instanceof HTMLInputElement && Number(target.value) < Number(minimum.value)) {
+      target.setCustomValidity("Целевой запас должен быть не меньше минимального");
+      target.reportValidity();
+      return;
+    }
     setPending(true);
     setMessage("");
     setFailed(false);
@@ -48,7 +64,7 @@ export function RecordForm({
             ? value === ""
               ? null
               : Number(value)
-            : value,
+            : field.commaSeparated ? value.split(",").map((item) => item.trim()).filter(Boolean) : value,
         ];
       }),
     );
@@ -62,7 +78,7 @@ export function RecordForm({
       if (!response.ok)
         throw new Error(result.error ?? "Не удалось сохранить запись");
       if (method === "POST") form.reset();
-      setMessage("Сохранено в PostgreSQL.");
+      setMessage(method === "PATCH" ? "Материал обновлён." : "Запись сохранена. Можно добавить следующую.");
       // Запись уже сохранена: ошибка обновления списка не означает ошибку вставки.
       try {
         await onSaved();
@@ -88,10 +104,18 @@ export function RecordForm({
     <form
       onSubmit={submit}
       className={compact ? "record-form compact-form" : "record-form"}
+      aria-busy={pending}
+      onInput={(event) => {
+        if (event.target instanceof HTMLInputElement) event.target.setCustomValidity("");
+        // Изменение минимума тоже может устранить ошибку целевого запаса.
+        const target = event.currentTarget.elements.namedItem("targetStock");
+        if (target instanceof HTMLInputElement) target.setCustomValidity("");
+        setMessage("");
+      }}
     >
       <fieldset disabled={pending}>
         <legend className="sr-only">
-          {method === "PATCH" ? "Настройка порогов запаса" : "Новая запись"}
+          {method === "PATCH" ? "Редактирование материала" : "Новая запись"}
         </legend>
         <div className="form-grid">
           {fields.map((field) => (
@@ -117,6 +141,7 @@ export function RecordForm({
                   type={field.type ?? "text"}
                   required={!field.optional}
                   maxLength={field.maxLength}
+                  placeholder={field.placeholder}
                   min={field.min}
                   max={field.max}
                   step={field.type === "number" ? 1 : undefined}
@@ -130,7 +155,7 @@ export function RecordForm({
           {pending
             ? "Сохранение…"
             : method === "PATCH"
-              ? "Сохранить пороги"
+              ? "Сохранить изменения"
               : "Сохранить запись"}
         </button>
       </fieldset>

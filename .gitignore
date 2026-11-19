@@ -6,7 +6,15 @@ coverage/
 artifacts/
 .env
 .env.*
+*.env
 !.env.example
+!*.env.example
+# Локальные резервные копии и файлы аутентификации PostgreSQL.
+backups/
+*.dump
+*.backup
+.pgpass
+pgpass.conf
 *.tsbuildinfo
 next-env.d.ts
 *.log
@@ -15,3 +23,7 @@ Thumbs.db
 .vercel/
 .teamcity/target/
 .demo-test-*/
+
+# Локальные инструкции инструментов разработки; не нужны для сборки и запуска.
+/AGENTS.md
+/CLAUDE.md
