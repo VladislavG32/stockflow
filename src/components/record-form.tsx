@@ -13,6 +13,7 @@ export type Field = {
   placeholder?: string;
   defaultValue?: string | number;
   options?: { value: number; label: string }[];
+  commaSeparated?: boolean;
 };
 
 // Переводит FormData в JSON и показывает результат. Структура полей задаётся снаружи,
@@ -63,7 +64,7 @@ export function RecordForm({
             ? value === ""
               ? null
               : Number(value)
-            : value,
+            : field.commaSeparated ? value.split(",").map((item) => item.trim()).filter(Boolean) : value,
         ];
       }),
     );
@@ -77,7 +78,7 @@ export function RecordForm({
       if (!response.ok)
         throw new Error(result.error ?? "Не удалось сохранить запись");
       if (method === "POST") form.reset();
-      setMessage(method === "PATCH" ? "Пороги запаса обновлены." : "Запись сохранена. Можно добавить следующую.");
+      setMessage(method === "PATCH" ? "Материал обновлён." : "Запись сохранена. Можно добавить следующую.");
       // Запись уже сохранена: ошибка обновления списка не означает ошибку вставки.
       try {
         await onSaved();
@@ -114,7 +115,7 @@ export function RecordForm({
     >
       <fieldset disabled={pending}>
         <legend className="sr-only">
-          {method === "PATCH" ? "Настройка порогов запаса" : "Новая запись"}
+          {method === "PATCH" ? "Редактирование материала" : "Новая запись"}
         </legend>
         <div className="form-grid">
           {fields.map((field) => (
@@ -154,7 +155,7 @@ export function RecordForm({
           {pending
             ? "Сохранение…"
             : method === "PATCH"
-              ? "Сохранить пороги"
+              ? "Сохранить изменения"
               : "Сохранить запись"}
         </button>
       </fieldset>

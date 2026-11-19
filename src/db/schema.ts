@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  jsonb,
   index,
   integer,
   pgTable,
@@ -18,6 +19,7 @@ export const materials = pgTable(
     name: varchar("name", { length: 160 }).notNull(),
     category: varchar("category", { length: 100 }).notNull(),
     unit: varchar("unit", { length: 20 }).notNull(),
+    additionalUnits: jsonb("additional_units").$type<string[]>().notNull().default([]),
     minimumStock: integer("minimum_stock").notNull().default(0),
     targetStock: integer("target_stock").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -36,6 +38,8 @@ export const suppliers = pgTable("suppliers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 160 }).notNull().unique(),
   contact: varchar("contact", { length: 200 }).notNull().default(""),
+  taxId: varchar("tax_id", { length: 12 }).notNull().default(""),
+  legalAddress: varchar("legal_address", { length: 250 }).notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

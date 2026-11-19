@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:17-bookworm
+    mem_limit: 384m
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=30, -c, "stockflow.ci_run=${CI_RUN_ID:?}"]
+    environment:
+      POSTGRES_USER: stockflow_ci
+      POSTGRES_DB: stockflow_ci
+      POSTGRES_PASSWORD: ${CI_DB_PASSWORD:?}
+    tmpfs:
+      - /var/lib/postgresql/data:size=256m
+    networks: [isolated]
+    healthcheck:
+      test: [CMD, pg_isready, -h, "127.0.0.1", -U, stockflow_ci, -d, stockflow_ci]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  migrate:
+    image: ${CI_MIGRATOR_IMAGE:?}
+    pull_policy: never
+    mem_limit: 256m
+    environment: &test_database
+      DATABASE_URL: postgresql://stockflow_ci:${CI_DB_PASSWORD:?}@db:5432/stockflow_ci
+    networks: [isolated]
+    depends_on:
+      db:
+        condition: service_healthy
+  app:
+    image: ${CI_IMAGE:?}
+    pull_policy: never
+    mem_limit: 512m
+    environment: *test_database
+    networks: [isolated]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+  tests:
+    image: ${CI_TEST_IMAGE:?}
+    pull_policy: never
+    mem_limit: 512m
+    environment:
+      <<: *test_database
+      CI_RUN_ID: ${CI_RUN_ID:?}
+      CI_DB_PASSWORD: ${CI_DB_PASSWORD:?}
+    command:
+      - node
+      - --test
+      - --test-reporter=spec
+      - --test-reporter-destination=stderr
+      - --test-reporter=junit
+      - --test-reporter-destination=stdout
+      - integration/scripts/integration.js
+    networks: [isolated]
+networks:
+  isolated:
+    internal: true

@@ -5,9 +5,9 @@ import { matchesStockFilter } from "../src/lib/inventory";
 import type { Material } from "../src/lib/types";
 
 const materials: Material[] = [
-  { id: 1, code: "М-10", name: "Кабель", category: "Электрика", unit: "м", balance: 8, minimumStock: 10, targetStock: 30, shortage: true, recommended: 22 },
-  { id: 2, code: "М-2", name: "Болт", category: "Крепёж", unit: "шт.", balance: 0, minimumStock: 0, targetStock: 0, shortage: false, recommended: 0 },
-  { id: 3, code: "М-1", name: "Анкер", category: "Крепёж", unit: "шт.", balance: 10, minimumStock: 10, targetStock: 20, shortage: false, recommended: 0 },
+  { id: 1, code: "М-10", name: "Кабель", category: "Электрика", unit: "м", additionalUnits: ["рулон"], balance: 8, minimumStock: 10, targetStock: 30, shortage: true, recommended: 22 },
+  { id: 2, code: "М-2", name: "Болт", category: "Крепёж", unit: "шт.", additionalUnits: [], balance: 0, minimumStock: 0, targetStock: 0, shortage: false, recommended: 0 },
+  { id: 3, code: "М-1", name: "Анкер", category: "Крепёж", unit: "шт.", additionalUnits: [], balance: 10, minimumStock: 10, targetStock: 20, shortage: false, recommended: 0 },
 ];
 
 test("Нулевой остаток независим от минимума и сочетается с поиском и сортировкой", () => {
@@ -31,6 +31,7 @@ test("Поиск нормализует пробелы/регистр и соч�
   assert.equal(materialView(materials, "каб", "Крепёж", "", "name").length, 0);
   assert.equal(materialView(materials, "не найдено", "", "", "name").length, 0);
   assert.deepEqual(materialView(materials, "ШТ.", "", "normal", "name").map(x => x.id), [3, 2]);
+  assert.deepEqual(materialView(materials, "РУЛОН", "", "", "name").map(x => x.id), [1]);
 });
 
 test("На нулевом минимуме отсутствие запаса не означает необходимость закупки", () => {

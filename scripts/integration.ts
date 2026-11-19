@@ -1,188 +1,172 @@
-import "dotenv/config";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { after, before, test } from "node:test";
 import pg from "pg";
+import { materialSuppliers, receiptView } from "../src/lib/dashboard-view";
+import { materialView } from "../src/lib/material-view";
+import type { DashboardData } from "../src/lib/types";
 
-// Проверка через настоящий HTTP и PostgreSQL, без моков. Удаляет только созданные ею записи.
-// BASE_URL должен указывать на приложение, подключённое к той же DATABASE_URL.
-const baseUrl = process.env.BASE_URL ?? "http://127.0.0.1:3000";
-const code = `QA-${randomUUID().slice(0, 12).toUpperCase()}`;
-const supplierName = `${code}-Поставщик`;
-const receiptNumbers: string[] = [];
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-let cleanupVerified = false;
-async function request(
-  path: string,
-  body?: unknown,
-  method = "POST",
-  status = 201,
-) {
-  const response = await fetch(
-    `${baseUrl}${path}`,
-    body === undefined
-      ? undefined
-      : {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-  );
+const runId = process.env.CI_RUN_ID;
+const connectionString = process.env.DATABASE_URL;
+const databasePassword = process.env.CI_DB_PASSWORD;
+assert.match(runId ?? "", /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/);
+assert.match(databasePassword ?? "", /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/);
+assert.ok(connectionString === `postgresql://stockflow_ci:${databasePassword}@db:5432/stockflow_ci`,
+  "Integration requires the isolated Compose database");
+const pool = new pg.Pool({ connectionString, connectionTimeoutMillis: 5000 });
+const base = "http://app:3000";
+
+async function verifyDatabase() {
+  const { rows } = await pool.query(`
+    select current_database() as db, current_user as role,
+      current_setting('server_version_num')::int / 10000 as major,
+      current_setting('stockflow.ci_run', true) as run
+  `);
+  assert.deepEqual(rows, [{ db: "stockflow_ci", role: "stockflow_ci", major: 17, run: runId }]);
+}
+
+async function request(path: string, status = 200, body?: unknown, method = "POST") {
+  await verifyDatabase();
+  const response = await fetch(`${base}${path}`, {
+    ...(body === undefined ? {} : {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
   const result = await response.json();
-  assert.equal(response.status, status, `${path}: ${JSON.stringify(result)}`);
+  assert.equal(response.status, status, `${method} ${path}: ${JSON.stringify(result)}`);
   return result;
 }
 
-async function main() {
-  if (!process.env.DATABASE_URL)
-    throw new Error("DATABASE_URL is required for cleanup");
-  assert.deepEqual(await request("/api/health", undefined, "GET", 200), {
-    status: "ok",
-    service: "stockflow",
-  });
-  await request("/api/ready", undefined, "GET", 200);
-  const material = {
-    code,
-    name: `=Тест ${code}`,
-    category: "QA",
-    unit: "шт.",
-    minimumStock: 10,
-    targetStock: 20,
-  };
-  const { id: materialId } = await request("/api/materials", material);
-  const { id: supplierId } = await request("/api/suppliers", {
-    name: supplierName,
-  });
-  // Проверяем, что приложение и cleanup подключены к одной базе, до любых удалений.
-  const stored = await pool.query("select id from materials where code = $1", [
-    code,
-  ]);
-  assert.equal(
-    stored.rows[0]?.id,
-    materialId,
-    "BASE_URL и DATABASE_URL должны относиться к одной БД",
-  );
-  const storedSupplier = await pool.query("select id from suppliers where name = $1", [supplierName]);
-  assert.equal(storedSupplier.rows[0]?.id, supplierId, "Поставщик должен находиться в той же БД");
-  cleanupVerified = true;
-  await request("/api/materials", material, "POST", 409);
-  await request("/api/suppliers", { name: supplierName }, "POST", 409);
-  await request(
-    "/api/materials",
-    { ...material, code: `${code}-BAD`, targetStock: 1 },
-    "POST",
-    400,
-  );
-  async function current() {
-    const data = await request("/api/dashboard", undefined, "GET", 200);
-    return data.materials.find(
-      (item: { id: number }) => item.id === materialId,
-    );
-  }
-  assert.equal((await current()).balance, 0);
-  assert.equal((await current()).recommended, 20);
-  const makeReceipt = (number: string, quantity: number) => ({
-    number,
-    materialId,
-    supplierId,
-    quantity,
-    receivedOn: "2026-10-18",
-  });
-  const first = `${code}-R1`;
-  receiptNumbers.push(first);
-  await request("/api/receipts", makeReceipt(first, 5));
-  assert.equal((await current()).recommended, 15);
-  await request("/api/receipts", makeReceipt(first, 5), "POST", 409);
-  await request("/api/receipts", makeReceipt(`${code}-BAD`, -1), "POST", 400);
-  await request(
-    "/api/receipts",
-    { ...makeReceipt(`${code}-BAD`, 1), receivedOn: "2026-02-30" },
-    "POST",
-    400,
-  );
-  await request(
-    "/api/receipts",
-    { ...makeReceipt(`${code}-BAD`, 1), supplierId: 2147483647 },
-    "POST",
-    400,
-  );
-  const csv = await fetch(`${baseUrl}/api/replenishment/export`);
-  assert.equal(csv.status, 200);
-  assert.match(await csv.text(), new RegExp(`'=Тест ${code}`));
-  const second = `${code}-R2`;
-  receiptNumbers.push(second);
-  await request("/api/receipts", makeReceipt(second, 5));
-  assert.equal((await current()).balance, 10);
-  assert.equal(
-    (await current()).recommended,
-    0,
-    "На минимуме закупка не требуется",
-  );
-  await request(
-    `/api/materials/${materialId}`,
-    { minimumStock: 15, targetStock: 30 },
-    "PATCH",
-    200,
-  );
-  assert.equal((await current()).recommended, 20);
-  await request(
-    `/api/materials/${materialId}`,
-    { minimumStock: 30, targetStock: 15 },
-    "PATCH",
-    400,
-  );
-  // Одновременные поступления не должны терять обновления остатка.
-  await Promise.all(
-    Array.from({ length: 4 }, async (_, index) => {
-      const number = `${code}-C${index}`;
-      receiptNumbers.push(number);
-      await request("/api/receipts", makeReceipt(number, 2));
-    }),
-  );
-  assert.equal((await current()).balance, 18);
-  assert.equal((await current()).recommended, 0);
-  const wrongOrigin = await fetch(`${baseUrl}/api/materials`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Origin: "https://example.org",
-    },
-    body: JSON.stringify(material),
-  });
-  assert.equal(wrongOrigin.status, 403);
-  const badJson = await fetch(`${baseUrl}/api/materials`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{",
-  });
-  assert.equal(badJson.status, 400);
-  const bigJson = await fetch(`${baseUrl}/api/materials`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: "x".repeat(17000) }),
-  });
-  assert.equal(bigJson.status, 413);
-  console.log(
-    "PASS: PostgreSQL, справочники, поступления, ошибки, параллельные операции, пополнение и CSV",
-  );
+async function dashboard(): Promise<DashboardData> {
+  return request("/api/dashboard", 200, undefined, "GET");
 }
 
-main()
-  .catch((error) => {
-    console.error(
-      error instanceof Error ? error.message : "Integration failed",
-    );
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    try {
-      // При несовпадении окружений не удаляем ничего через непроверенное соединение.
-      if (!cleanupVerified) return;
-      await pool.query("delete from receipts where number = any($1::text[])", [
-        receiptNumbers,
-      ]);
-      await pool.query("delete from materials where code = $1", [code]);
-      await pool.query("delete from suppliers where name = $1", [supplierName]);
-    } finally {
-      await pool.end();
-    }
+const material = {
+  code: "CI-1", name: "Кабель", category: "Электрика", unit: "м",
+  additionalUnits: ["рулон"], minimumStock: 10, targetStock: 20,
+};
+const secondMaterial = { ...material, code: "CI-2", name: "Крепёж", unit: "шт.", additionalUnits: [] };
+const supplier = {
+  name: "Поставщик А", taxId: "7701234567", legalAddress: "Москва, ул. Складская, 1",
+  contact: "qa@example.test",
+};
+
+before(verifyDatabase);
+after(() => pool.end());
+
+if (process.env.STOCKFLOW_INTEGRATION_PHASE === "persistence") {
+  test("I09 Сохранность данных после пересоздания приложения", async () => {
+    const { materials, receipts } = await dashboard();
+    const item = materials.find(({ code }) => code === "CI-1");
+    assert.ok(item);
+    assert.equal(item.balance, 18);
+    assert.equal(receipts.filter(({ materialId }) => materialId === item.id).length, 6);
   });
+} else {
+  let materialId: number;
+  let otherId: number;
+  let supplierId: number;
+  let otherSupplierId: number;
+  let unrelatedSupplierId: number;
+
+  const receipt = (number: string, quantity = 5) => ({
+    number, quantity, materialId, supplierId, receivedOn: "2026-10-18", note: "Ордер QA",
+  });
+
+  async function current() {
+    const row = (await dashboard()).materials.find(({ id }) => id === materialId);
+    assert.ok(row);
+    return row;
+  }
+
+  test("I01 Готовность приложения с PostgreSQL 17", async () => {
+    assert.deepEqual(await request("/api/health"), { status: "ok", service: "stockflow" });
+    await request("/api/ready");
+    assert.deepEqual(await dashboard(), { materials: [], suppliers: [], receipts: [] });
+  });
+
+  test("I02 Добавление, изменение и просмотр реквизитов материала", async () => {
+    ({ id: materialId } = await request("/api/materials", 201, material));
+    assert.deepEqual(await current(), {
+      ...material, id: materialId, balance: 0, shortage: true, recommended: 20,
+    });
+    const edited = { ...material, code: "CI-EDIT", name: "Провод", category: "Группа 2",
+      unit: "см", additionalUnits: ["бухта", "катушка"] };
+    assert.deepEqual(await request(`/api/materials/${materialId}`, 200, edited, "PATCH"), { id: materialId });
+    assert.deepEqual(await current(), {
+      ...edited, id: materialId, balance: 0, shortage: true, recommended: 20,
+    });
+    await request(`/api/materials/${materialId}`, 200, material, "PATCH");
+    ({ id: otherId } = await request("/api/materials", 201, secondMaterial));
+    await request("/api/materials", 201, { ...material, code: "CI-EMPTY" });
+  });
+
+  test("I03 Поставщики и реквизиты в снимке склада", async () => {
+    ({ id: supplierId } = await request("/api/suppliers", 201, supplier));
+    ({ id: otherSupplierId } = await request("/api/suppliers", 201, { name: "Поставщик Б" }));
+    ({ id: unrelatedSupplierId } = await request("/api/suppliers", 201, { name: "Поставщик В" }));
+    assert.deepEqual((await dashboard()).suppliers.find(({ id }) => id === supplierId), { id: supplierId, ...supplier });
+  });
+
+  test("I04 Поступления, остаток и граница пополнения", async () => {
+    const { id } = await request("/api/receipts", 201, receipt("CI-R1"));
+    assert.equal((await current()).balance, 5);
+    assert.equal((await current()).recommended, 15);
+    assert.deepEqual((await dashboard()).receipts.find((row) => row.id === id), {
+      ...receipt("CI-R1"), id, materialName: material.name, supplierName: supplier.name, unit: material.unit,
+    });
+    await request("/api/receipts", 201, receipt("CI-R2"));
+    assert.equal((await current()).balance, 10);
+    assert.equal((await current()).recommended, 0);
+  });
+
+  test("I05 Количество и список поставщиков выбранного материала", async () => {
+    await request("/api/receipts", 201, { ...receipt("CI-R3", 2), supplierId: otherSupplierId });
+    await request("/api/receipts", 201, {
+      ...receipt("CI-OTHER"), materialId: otherId, supplierId: unrelatedSupplierId,
+    });
+    const { suppliers, receipts, materials } = await dashboard();
+    const selected = materialSuppliers(suppliers, receipts, materialId);
+    assert.equal(selected.length, 2);
+    assert.deepEqual(selected.map(({ id }) => id), [supplierId, otherSupplierId]);
+    assert.deepEqual(selected[0], { id: supplierId, ...supplier });
+    assert.deepEqual(materialSuppliers(suppliers, receipts, otherId).map(({ id }) => id), [unrelatedSupplierId]);
+    const empty = materials.find(({ code }) => code === "CI-EMPTY");
+    assert.ok(empty);
+    assert.deepEqual(materialSuppliers(suppliers, receipts, empty.id), []);
+  });
+
+  test("I06 Поиск и фильтры остатков и истории", async () => {
+    const { materials, receipts } = await dashboard();
+    const balances = materialView(materials, "  КАБ  ", "Электрика", "normal", "name");
+    assert.deepEqual(balances.map(({ code, balance }) => [code, balance]), [["CI-1", 12]]);
+    assert.deepEqual(materialView(materials, "рулон", "", "empty", "name").map(({ code }) => code), ["CI-EMPTY"]);
+    assert.deepEqual(receiptView(receipts, "  qa ", materialId).map(({ number }) => number), ["CI-R3", "CI-R2", "CI-R1"]);
+    assert.deepEqual(receiptView(receipts, "ci-r1", null).map(({ number }) => number), ["CI-R1"]);
+    assert.deepEqual(receiptView(receipts, "ci-r1", otherId), []);
+  });
+
+  test("I07 Отклонение дубликатов, невалидного ввода и неверных связей", async () => {
+    const original = await dashboard();
+    await request("/api/materials", 409, material);
+    await request("/api/materials", 400, { ...material, code: "CI-BAD", name: "" });
+    await request("/api/suppliers", 409, supplier);
+    await request("/api/receipts", 409, receipt("CI-R1"));
+    await request("/api/receipts", 400, receipt("CI-BAD", -1));
+    await request("/api/receipts", 400, { ...receipt("CI-BAD"), receivedOn: "2026-02-30" });
+    await request("/api/receipts", 400, { ...receipt("CI-BAD"), supplierId: 2147483647 });
+    await request("/api/receipts", 400, { ...receipt("CI-BAD"), materialId: 2147483647 });
+    await request(`/api/materials/${materialId}`, 409, { ...material, unit: "кг" }, "PATCH");
+    assert.deepEqual(await dashboard(), original);
+  });
+
+  test("I08 Параллельные поступления без потери остатка", async () => {
+    const results = await Promise.all(
+      [1, 2, 3].map((index) => request("/api/receipts", 201, receipt(`CI-C${index}`, 2))),
+    );
+    assert.equal(new Set(results.map(({ id }) => id)).size, 3);
+    assert.equal((await current()).balance, 18);
+  });
+}

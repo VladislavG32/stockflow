@@ -1,5 +1,7 @@
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
+import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import jetbrains.buildServer.configs.kotlin.triggers.finishBuildTrigger
 import jetbrains.buildServer.configs.kotlin.vcs.GitVcsRoot
@@ -10,6 +12,7 @@ version = "2026.2"
 project {
     vcsRoot(Source)
     buildType(Verify)
+    buildType(Acceptance)
     buildType(Publish)
     buildType(Stage)
 }
@@ -39,7 +42,7 @@ object Verify : BuildType({
     name = "01 Verify all branches"
     maxRunningBuilds = 1
     vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
-    failureConditions { nonZeroExitCode = true }
+    failureConditions { nonZeroExitCode = true; testFailure = true }
     steps {
         script {
             id = "Lab6_ESLint"
@@ -52,14 +55,52 @@ object Verify : BuildType({
             scriptContent = "bash scripts/ci/static.sh"
         }
         script {
+            id = "Lab7_Unit"
+            name = "Unit tests — Node.js"
+            scriptContent = """
+                if [ -f scripts/ci/unit.sh ]; then
+                  bash scripts/ci/unit.sh
+                else
+                  echo 'Unit tests are included in the Verify script at this revision.'
+                fi
+            """.trimIndent()
+        }
+        script {
             id = "Verify_Build"
             name = "Linux CI: проверки, сборка и архив образов"
             scriptContent = "bash scripts/ci/verify.sh"
         }
     }
-    triggers { vcs { branchFilter = "+:*" } }
+    features { xmlReport { reportType = XmlReport.XmlReportType.JUNIT; rules = "+:artifacts/unit.junit.xml" } }
     artifactRules = "artifacts/* => checks"
     requirements { equals("teamcity.agent.name", "stockflow-build-agent") }
+})
+object Acceptance : BuildType({
+    id("StockFlow_Acceptance")
+    name = "Acceptance — PostgreSQL 17"
+    maxRunningBuilds = 1
+    vcs { checkoutMode = CheckoutMode.ON_AGENT; cleanCheckout = true; root(Source) }
+    failureConditions { nonZeroExitCode = true; testFailure = true }
+    dependencies {
+        snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
+        artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/ci-images.* => incoming" }
+    }
+    steps {
+        script {
+            id = "Lab7_Integration"
+            name = "Integration tests — HTTP and isolated PostgreSQL 17"
+            scriptContent = "bash scripts/ci/integration.sh"
+        }
+    }
+    features { xmlReport { reportType = XmlReport.XmlReportType.JUNIT; rules = "+:artifacts/integration.junit.xml\n+:artifacts/persistence.junit.xml" } }
+    triggers {
+        vcs {
+            branchFilter = "+:<default>\n+:prod\n+:feature/*\n+:fix/*"
+            watchChangesInDependencies = true
+        }
+    }
+    artifactRules = "artifacts/* => acceptance"
+    requirements { equals("teamcity.agent.name", "stockflow-test-agent") }
 })
 object Publish : BuildType({
     id("StockFlow_Publish")
@@ -73,6 +114,7 @@ object Publish : BuildType({
         // через UI/credentialsJSON. Не наследовать секреты в Verify/Acceptance.
     }
     dependencies {
+        snapshot(Acceptance) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
         snapshot(Verify) { onDependencyFailure = FailureAction.FAIL_TO_START; onDependencyCancel = FailureAction.CANCEL }
         artifacts(Verify) { buildRule = sameChain(); cleanDestination = true; artifactRules = "checks/ci-images.* => incoming" }
     }

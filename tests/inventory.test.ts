@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { replenishment, csvCell } from "../src/lib/inventory";
-import { materialSchema, receiptSchema } from "../src/lib/validation";
+import { materialSchema, receiptSchema, supplierSchema } from "../src/lib/validation";
 
 test("Пополнение: недостаток, точная граница, избыток и нулевой минимум", () => {
   assert.deepEqual(replenishment(8, 10, 30), {
@@ -33,6 +33,7 @@ const material = {
 };
 test("Материал: обрезка пробелов, нормализация кода, корректные пороги", () => {
   assert.equal(materialSchema.parse(material).code, "X");
+  assert.deepEqual(materialSchema.parse({ ...material, additionalUnits: [" ящик "] }).additionalUnits, ["ящик"]);
   for (const patch of [
     { targetStock: 9 },
     { minimumStock: -1 },
@@ -40,11 +41,21 @@ test("Материал: обрезка пробелов, нормализаци�
     { name: "  " },
     { targetStock: 1000001 },
     { minimumStock: "10" },
+    { additionalUnits: ["ШТ."] },
   ]) {
     assert.equal(
       materialSchema.safeParse({ ...material, ...patch }).success,
       false,
     );
+  }
+});
+
+test("Поставщик: нормализация реквизитов и отклонение неверного ИНН", () => {
+  assert.deepEqual(supplierSchema.parse({ name: " Партнёр ", taxId: " 7701234567 " }), {
+    name: "Партнёр", taxId: "7701234567", contact: "", legalAddress: "",
+  });
+  for (const input of [{ name: " " }, { name: "x".repeat(161) }, { name: "А", taxId: "123" }]) {
+    assert.equal(supplierSchema.safeParse(input).success, false);
   }
 });
 

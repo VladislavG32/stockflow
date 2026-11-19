@@ -131,6 +131,7 @@ td strong { color: var(--ink); font-size: 15px; font-weight: 600; }
 .stock-badge.warning-text { background: #fff3d8; color: #825811; }
 .positive-quantity { color: var(--green); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .limits-editor { min-width: 85px; }
+.panel-material-filter { max-width: min(100%, 180px); }
 .limits-editor summary { color: var(--green); min-height: 44px; padding: 8px 0; font-size: 14px; }
 .compact-form { padding: 12px 0 0; width: 200px; }
 .plan-section { margin-top: 24px; }

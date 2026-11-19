@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DashboardData } from "@/lib/types";
 import { materialView, type MaterialSort } from "@/lib/material-view";
+import { materialSuppliers, receiptView } from "@/lib/dashboard-view";
 import { AppShell, BoxIcon, sections } from "./ui";
 import { InventoryForms } from "./inventory-forms";
 import {
@@ -31,6 +32,8 @@ export function Dashboard({
   const [stockFilter, setStockFilter] = useState("");
   const [sort, setSort] = useState<MaterialSort>("name");
   const [updated, setUpdated] = useState("");
+  const [supplierMaterial, setSupplierMaterial] = useState<number | null>(null);
+  const [receiptMaterial, setReceiptMaterial] = useState<number | null>(null);
 
   async function refresh() {
     setRefreshing(true);
@@ -55,12 +58,25 @@ export function Dashboard({
   const matches = (...values: string[]) =>
     values.some((value) => value.toLocaleLowerCase("ru-RU").includes(search));
   const visibleMaterials = materialView(data?.materials ?? [], query, category, stockFilter, sort);
-  const visibleSuppliers =
-    data?.suppliers.filter((item) => matches(item.name, item.contact)) ?? [];
-  const visibleReceipts =
-    data?.receipts.filter((item) =>
-      matches(item.number, item.materialName, item.supplierName, item.note),
-    ) ?? [];
+  const relevantSuppliers = data && supplierMaterial !== null
+    ? materialSuppliers(data.suppliers, data.receipts, supplierMaterial)
+    : data?.suppliers ?? [];
+  const visibleSuppliers = relevantSuppliers.filter((item) =>
+    matches(item.name, item.contact, item.taxId, item.legalAddress),
+  );
+  const visibleReceipts = receiptView(data?.receipts ?? [], query, receiptMaterial);
+
+  function materialFilter(label: string, selected: number | null, change: (id: number | null) => void) {
+    return (
+      <select aria-label={label} className="panel-material-filter" value={selected ?? ""}
+        onChange={(event) => change(event.target.value ? Number(event.target.value) : null)}>
+        <option value="">Все материалы</option>
+        {data?.materials.map((material) => (
+          <option key={material.id} value={material.id}>{material.code} · {material.name}</option>
+        ))}
+      </select>
+    );
+  }
   const shortageCount =
     data?.materials.filter((item) => item.shortage).length ?? 0;
   const counts = data
@@ -220,6 +236,8 @@ export function Dashboard({
                 setCategory("");
                 setStockFilter("");
                 setSort("name");
+                setSupplierMaterial(null);
+                setReceiptMaterial(null);
               }}
             >
               Сбросить
@@ -231,8 +249,13 @@ export function Dashboard({
           </div>
           <div className="panels-grid">
             <MaterialTable rows={visibleMaterials} onSaved={refresh} />
-            <SupplierList rows={visibleSuppliers} />
-            <ReceiptTable rows={visibleReceipts} />
+            <SupplierList rows={visibleSuppliers}
+              materialCount={supplierMaterial === null ? undefined : relevantSuppliers.length}
+              materialAction={materialFilter("Поставщики выбранного материала", supplierMaterial, setSupplierMaterial)}
+            />
+            <ReceiptTable rows={visibleReceipts}
+              materialAction={materialFilter("Поступления по материалу", receiptMaterial, setReceiptMaterial)}
+            />
             <BalanceTable rows={visibleMaterials} />
           </div>
           <div className="plan-section">
